@@ -35,3 +35,6 @@ Encoding: UTF-8
 LazyData: true
 URL: https://github.com/frankhezemans/plausiblecor
 BugReports: https://github.com/frankhezemans/plausiblecor/issues
+Imports: 
+    hypergeo,
+    stats
