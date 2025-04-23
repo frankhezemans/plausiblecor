@@ -36,7 +36,12 @@ LazyData: true
 URL: https://github.com/frankhezemans/plausiblecor
 BugReports: https://github.com/frankhezemans/plausiblecor/issues
 Imports: 
+    dplyr,
+    ggdist,
     hypergeo,
+    magrittr,
     rlang,
-    stats
+    stats,
+    tibble,
+    tidyr
 RoxygenNote: 7.3.2
