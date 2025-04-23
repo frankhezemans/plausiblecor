@@ -9,22 +9,22 @@ posterior_rho_updf(r, n, kappa = 1, n_bins = 1000, ...)
 }
 \arguments{
 \item{r}{Numeric value. The observed sample correlation coefficient, must be
-between -1 and 1.}
+between `-1` and `1`.}
 
-\item{n}{Numeric value. The sample size, must be at least 3.}
+\item{n}{Numeric value. The sample size, must be at least `3`.}
 
 \item{kappa}{Numeric value. Parameter controlling the "concentration" of the
 stretched beta prior on the correlation coefficient (see details
-below). Default is 1, resulting in a uniform prior.}
+below). Default is `1`, resulting in a uniform prior.}
 
 \item{n_bins}{Integer. Number of grid points for the approximation, default
-is 1000.}
+is `1000`.}
 
 \item{...}{Additional arguments passed to [stats::approxfun()].}
 }
 \value{
 A function that evaluates the unnormalized posterior density at any
-        correlation value between -1 and 1.
+        correlation value between `-1` and `1`.
 }
 \description{
 This function calculates the unnormalised posterior density for Pearson's

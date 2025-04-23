@@ -8,17 +8,17 @@
 #' value between -1 and 1.
 #'
 #' @param r Numeric value. The observed sample correlation coefficient, must be
-#'        between -1 and 1.
-#' @param n Numeric value. The sample size, must be at least 3.
+#'        between `-1` and `1`.
+#' @param n Numeric value. The sample size, must be at least `3`.
 #' @param kappa Numeric value. Parameter controlling the "concentration" of the
 #'        stretched beta prior on the correlation coefficient (see details
-#'        below). Default is 1, resulting in a uniform prior.
+#'        below). Default is `1`, resulting in a uniform prior.
 #' @param n_bins Integer. Number of grid points for the approximation, default
-#'        is 1000.
+#'        is `1000`.
 #' @param ... Additional arguments passed to [stats::approxfun()].
 #'
 #' @return A function that evaluates the unnormalized posterior density at any
-#'         correlation value between -1 and 1.
+#'         correlation value between `-1` and `1`.
 #'
 #' @details
 #' The function implements the analytical posterior for Pearson's correlation
