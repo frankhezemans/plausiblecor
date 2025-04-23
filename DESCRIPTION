@@ -37,4 +37,6 @@ URL: https://github.com/frankhezemans/plausiblecor
 BugReports: https://github.com/frankhezemans/plausiblecor/issues
 Imports: 
     hypergeo,
+    rlang,
     stats
+RoxygenNote: 7.3.2
