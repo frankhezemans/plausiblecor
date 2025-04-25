@@ -31,9 +31,10 @@
 #' @param ... Additional arguments passed to [posterior_rho_updf()].
 #'
 #' @return A [tibble::tbl_df-class] with one row per MCMC sample containing:
-#'   \item{r}{Pearson correlation coefficient for each MCMC sample}
+#'   \item{.draw}{The MCMC sample ID}
+#'   \item{r}{Pearson correlation coefficient}
 #'   \item{n}{Number of complete observations used for correlation calculation}
-#'   \item{posterior_density}{Function object for evaluating the unnormalized
+#'   \item{posterior_updf}{Function object for evaluating the unnormalised
 #'         posterior density at any correlation value between -1 and 1}
 #'
 #' @details
@@ -99,21 +100,34 @@ run_plausible_cor <- function(
   )
 
   if (covariate %in% names(mcmc_data)) {
+
     data <- mcmc_data
+
   } else if (!is.null(covariate_data)) {
+
     validate_column_inputs(
       col_names = c(subject_id, covariate),
       data_frame = covariate_data,
       data_name = "covariate_data"
     )
+
     covariate_data_clean <- covariate_data %>%
       dplyr::select(dplyr::all_of(c(subject_id, covariate))) %>%
       dplyr::distinct()
+
+    n_subs <- length(unique(covariate_data_clean[[subject_id]]))
+    if (nrow(covariate_data_clean) != n_subs) {
+      rlang::abort(
+        message = "Covariate data should have one unique value per subject."
+      )
+    }
+
     data <- dplyr::left_join(
       x = mcmc_data,
       y = covariate_data_clean,
       by = subject_id
     )
+
   } else {
     rlang::abort(
       message = paste0(
@@ -124,7 +138,9 @@ run_plausible_cor <- function(
   }
 
   result <- data %>%
-    dplyr::group_by(.data[[draw_id]]) %>%
+    dplyr::rename(dplyr::all_of(c(.draw = draw_id))) %>%
+    dplyr::arrange(.data[[".draw"]]) %>%
+    dplyr::group_by(.data[[".draw"]]) %>%
     dplyr::summarise(
       r = stats::cor(
         x = .data[[parameter]],
@@ -163,62 +179,6 @@ run_plausible_cor <- function(
 
 }
 
-
-#' Validate column name inputs for functions working with data frames
-#'
-#' @description
-#' Internal helper function that checks whether user-supplied column names are
-#' valid. Optionally verifies that the named columns exist in a provided data
-#' frame.
-#'
-#' @param col_names Named character vector of column names to validate.
-#' @param data_frame Optional data frame to check column existence for.
-#' @param data_name Optional name of the data frame for error messages.
-#'
-#' @return Invisibly returns NULL if validation passes, otherwise raises an
-#'         error.
-#' @noRd
-validate_column_inputs <- function(
-    col_names,
-    data_frame = NULL,
-    data_name = NULL
-) {
-  invalid_cols <- vapply(
-    X = col_names,
-    FUN = function(col_name) {
-      length(col_name) != 1 || !is.character(col_name)
-    },
-    FUN.VALUE = logical(1)
-  )
-  if (any(invalid_cols)) {
-    bad_names <- names(col_names)[invalid_cols]
-    rlang::abort(
-      message = paste0(
-        "Input '", paste(bad_names, collapse = "', '"),
-        "' must be a single string denoting a column."
-      )
-    )
-  }
-
-  if (!is.null(data_frame)) {
-    if (is.null(data_name)) {
-      data_name <- rlang::as_label(rlang::enquo(data_frame))
-    }
-    missing_cols <- setdiff(unname(col_names), names(data_frame))
-    if (length(missing_cols) > 0) {
-      rlang::abort(
-        message = paste0(
-          "Missing required columns in '", data_name, "': ",
-          paste(missing_cols, collapse = ", "), "."
-        )
-      )
-    }
-  }
-
-  return(invisible(x = NULL))
-
-}
-
 #' Summarise plausible correlation estimates
 #'
 #' @description
@@ -227,7 +187,7 @@ validate_column_inputs <- function(
 #' and the population level (via the mean posterior density across MCMC
 #' samples).
 #'
-#' @param x A data frame output from [run_plausible_cor()].
+#' @param .data A data frame output from [run_plausible_cor()].
 #' @param point_method Method used to compute the central tendency of the
 #'        correlation estimate. One of `"mean"` or `"median"`. Default is
 #'        `"mean"`.
@@ -247,48 +207,39 @@ validate_column_inputs <- function(
 #'
 #' @export
 summarise_plausible_cor <- function(
-    x,
+    .data,
     point_method = c("mean", "median"),
     interval_width = c(0.5, 0.8, 0.95),
     interval_method = c("hdci", "qi")
 ) {
 
+  validate_column_inputs(
+    col_names = c(".draw", "r", "posterior_updf"),
+    data_frame = .data,
+    data_name = ".data"
+  )
+
   point_method <- rlang::arg_match(arg = point_method)
   interval_method <- rlang::arg_match(arg = interval_method)
 
-  sample_summary <- x %>%
-    ggdist::point_interval(
-      .data[["r"]],
-      .width = interval_width,
-      .point = eval(rlang::sym(point_method)),
-      .interval = eval(rlang::sym(interval_method))
-    ) %>%
-    dplyr::select(
-      -dplyr::all_of(c(".point", ".interval"))
-    ) %>%
-    dplyr::rename_with(
-      .fn = ~ gsub("^\\.", "", .x),
-      .cols = dplyr::starts_with(".")
-    ) %>%
-    dplyr::rename_with(
-      .fn = ~ point_method,
-      .cols = "r"
+  sample_summary <- .data %>%
+    dplyr::select(dplyr::all_of("r")) %>%
+    summarise_samples(
+      point_method = point_method,
+      interval_width = interval_width,
+      interval_method = interval_method
     ) %>%
     dplyr::mutate(
-      type = "sample",
-      p_dir = max(
-        x[["r"]] > 0,
-        x[["r"]] < 0
-      )
+      type = "sample"
     ) %>%
     dplyr::relocate(dplyr::all_of("type"))
 
-  mean_posterior_rho <- x %>%
+  mean_posterior_rho <- .data %>%
     get_posterior_rho_densities() %>%
     get_mean_posterior_rho()
 
   rho_grid <- mean_posterior_rho[["x"]]
-  grid_spacing <- diff(rho_grid)[1]
+  dx <- diff(rho_grid)[1]
   mean_density <- mean_posterior_rho[["mean_density"]]
 
   population_point <- get_point_estimate(
@@ -309,8 +260,8 @@ summarise_plausible_cor <- function(
       type = "population",
       !!point_method := population_point,
       p_dir = max(
-        sum(mean_density[rho_grid > 0]) * grid_spacing,
-        sum(mean_density[rho_grid < 0]) * grid_spacing
+        sum(mean_density[rho_grid > 0]) * dx,
+        sum(mean_density[rho_grid < 0]) * dx
       )
     ) %>%
     dplyr::relocate(dplyr::all_of("type"))
@@ -326,24 +277,182 @@ summarise_plausible_cor <- function(
 
 }
 
+#' Compare two distributions of plausible correlation values
+#'
+#' @description
+#' Compares the posterior distributions of plausible correlation values, as
+#' returned by two separate calls to [run_plausible_cors()]. Supports two
+#' methods for defining the distribution of the difference: a **sample-based**
+#' comparison, which subtracts the correlation values from matching MCMC
+#' samples, and a **population-based** comparison, which draws quantiles from
+#' each posterior distribution (accounting for population uncertainty) before
+#' computing the difference.
+#'
+#' @param x,y Data frames returned by [run_plausible_cors()], each containing
+#'   the columns `.draw`, `r`, and `posterior_updf`.
+#' @param comparison_method Character string specifying how to compare the
+#'   plausible correlations. Must be one of `"sample"` (default) or
+#'   `"population"`. `"sample"` compares paired correlation values from
+#'   matching `.draw` IDs; `"population"` compares posterior distributions of
+#'   the correlation by randomly drawn quantiles.
+#' @param point_method Character string specifying the summary point estimate
+#'   of the delta distribution. Either `"mean"` (default) or `"median"`.
+#' @param interval_width Numeric vector of interval widths (between 0 and 1)
+#'   for the uncertainty intervals to be returned. Default is
+#'   `c(0.5, 0.8, 0.95)`.
+#' @param interval_method Character string specifying the method used to
+#'   compute intervals. Either `"hdci"` (highest-density continuous interval;
+#'   default) or `"qi"` (quantile interval).
+#' @param n_samples Integer indicating how many quantiles to draw per posterior
+#'   distribution when `comparison_method = "population"`. Default is 1.
+#' @param rng_seed Optional numeric vector of length 2 to control the random
+#'   seed for quantile sampling of `x` and `y`, respectively. If `NULL`,
+#'   random seeds will not be set.
+#'
+#' @return A [tibble::tibble()] containing summary statistics of the difference
+#'  between correlation coefficients.
+#'
+#' @details
+#' When using `comparison_method = "sample"`, the function computes the
+#' difference in the Pearson correlation coefficient for each `.draw` shared
+#' between the two data frames.
+#'
+#' When using `comparison_method = "population"`, the function draws quantile
+#' value(s) from the posterior distribution of each Pearson correlation (as
+#' defined by `posterior_updf`) and computes the difference. This allows for
+#' comparison at the population level rather than the specific sample of
+#' subjects.
+#'
+#' @export
+compare_plausible_cors <- function(
+    x,
+    y,
+    comparison_method = c("sample", "population"),
+    point_method = c("mean", "median"),
+    interval_width = c(0.5, 0.8, 0.95),
+    interval_method = c("hdci", "qi"),
+    n_samples = 1,
+    rng_seed = NULL
+) {
+
+  validate_column_inputs(
+    col_names = c(".draw", "r", "posterior_updf"),
+    data_frame = x,
+    data_name = "x"
+  )
+  validate_column_inputs(
+    col_names = c(".draw", "r", "posterior_updf"),
+    data_frame = y,
+    data_name = "y"
+  )
+
+  if (nrow(x) != nrow(y)) {
+    rlang::abort(
+      message = "Data frames 'x' and 'y' should have the same number of rows."
+    )
+  }
+
+  if (is.null(rng_seed) || any(!is.finite(rng_seed))) {
+    rng_seed <- c(NA, NA)
+  }
+  if (length(rng_seed) != 2) {
+    rlang::abort(
+      message = "'rng_seed' should contain two elements (one per data frame)."
+    )
+  }
+
+  comparison_method <- rlang::arg_match(arg = comparison_method)
+  point_method <- rlang::arg_match(arg = point_method)
+  interval_method <- rlang::arg_match(arg = interval_method)
+
+  if (comparison_method == "sample") {
+
+    joined_data <- dplyr::inner_join(
+      x = dplyr::select(
+        .data = x,
+        dplyr::all_of(c(".draw", "r"))
+      ),
+      y = dplyr::select(
+        .data = y,
+        dplyr::all_of(c(".draw", "r"))
+      ),
+      by = ".draw",
+      suffix = c("_x", "_y")
+    )
+
+    delta_df <- joined_data %>%
+      dplyr::mutate(
+        delta = .data[["r_x"]] - .data[["r_y"]],
+        keep = "none"
+      )
+
+  } else {
+
+    posterior_draws <- Map(
+      f = function(data, seed, n = n_samples) {
+        get_sampled_quantiles(
+          .data = data,
+          n_samples = n,
+          starter_seed = seed
+        )
+      },
+      list(x = x, y = y),
+      stats::setNames(object = rng_seed, nm = c("x", "y"))
+    )
+
+    delta_df <- dplyr::bind_rows(
+      posterior_draws,
+      .id = "dataset"
+    ) %>%
+      dplyr::select(
+        dplyr::all_of(c("dataset", ".draw", "quantile"))
+      ) %>%
+      tidyr::pivot_wider(
+        id_cols = tidyr::all_of(".draw"),
+        names_from = "dataset",
+        values_from = "quantile"
+      ) %>%
+      dplyr::mutate(
+        delta = .data[["x"]] - .data[["y"]],
+        .keep = "none"
+      )
+
+  }
+
+  result <- delta_df %>%
+    summarise_samples(
+      point_method = point_method,
+      interval_width = interval_width,
+      interval_method = interval_method
+    )
+
+  return(result)
+
+}
+
 #' Evaluate posterior density functions over a grid
 #'
 #' @description
 #' Internal helper that evaluates each posterior density function in the output
 #' of [run_plausible_cor()] over a shared grid from -1 to 1.
 #'
-#' @param x Data frame with columns `posterior_updf` of function objects and
-#'        `r` containing the sample correlation coefficients.
+#' @param .data Data frame output from [run_plausible_cor()].
 #' @param grid_spacing The step size for the grid of correlation values to
 #'        evaluate.
 #'
 #' @return A data frame where each row corresponds to one density value for a
 #'         given posterior density function.
 #' @noRd
-get_posterior_rho_densities <- function(
-    x,
-    grid_spacing = 1e-3
-) {
+get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
+
+  validate_column_inputs(
+    col_names = c(".draw", "r", "posterior_updf"),
+    data_frame = .data,
+    data_name = ".data"
+  )
+
+  basic_cor_df <- .data %>%
+    dplyr::select(dplyr::all_of(c(".draw", "r")))
 
   rho_grid <- seq(from = -1, to = 1, by = grid_spacing)
 
@@ -359,8 +468,8 @@ get_posterior_rho_densities <- function(
       )
       return(result)
     },
-    x[["posterior_updf"]],
-    x[["r"]]
+    .data[["posterior_updf"]],
+    .data[["r"]]
   )
 
   result <- posterior_rho_densities_list %>%
@@ -376,7 +485,12 @@ get_posterior_rho_densities <- function(
     ) %>%
     dplyr::select(
       dplyr::all_of(c("r", "x", "density"))
-    )
+    ) %>%
+    dplyr::left_join(
+      y = basic_cor_df,
+      by = ".draw"
+    ) %>%
+    dplyr::relocate(dplyr::all_of(".draw"))
 
   return(result)
 
@@ -388,42 +502,52 @@ get_posterior_rho_densities <- function(
 #' Internal helper that computes the mean posterior density across MCMC samples,
 #' based on the evaluated densities on a shared grid.
 #'
-#' @param posterior_rho_densities Data frame output from
-#'        [get_posterior_rho_densities()].
+#' @param .data Data frame output from [get_posterior_rho_densities()].
 #'
 #' @return A tibble with columns `x` (grid points) and `density`
 #'         (mean posterior density).
 #' @noRd
-get_mean_posterior_rho <- function(
-    posterior_rho_densities
-) {
-  result <- posterior_rho_densities %>%
+get_mean_posterior_rho <- function(.data) {
+
+  validate_column_inputs(
+    col_names = c(".draw", "r", "x", "density"),
+    data_frame = .data,
+    data_name = ".data"
+  )
+
+  result <- .data %>%
     dplyr::group_by(.data[["x"]]) %>%
     dplyr::summarise(
       mean_density = mean(.data[["density"]]),
       .groups = "drop"
     )
   dx <- diff(result[["x"]])[1]
+
   result <- result %>%
     dplyr::mutate(
       mean_density = .data[["mean_density"]] /
         sum(.data[["mean_density"]] * dx)
     )
+
   return(result)
+
 }
 
 #' @title Compute Point Estimate from Discretised Density
 #'
-#' @description Internal helper function to compute a point estimate (mean or
-#' median) from a numeric vector of values and a corresponding density over a
-#' discretised grid.
+#' @description Internal helper function to compute a point estimate (mean,
+#' median, or arbitrary quantile) from a numeric vector of values and a
+#' corresponding density over a discretised grid.
 #'
 #' @param val Numeric vector representing the grid of values over which the
 #'        density is defined. Assumed to be equally spaced.
 #' @param dens Numeric vector of the same length as `val`, representing the
 #'        density at each grid point.
 #' @param method Character string specifying which point estimate to compute.
-#'        One of `"mean"` (default) or `"median"`.
+#'        One of `"mean"`, `"median"`, or `"quantile"`.
+#' @param prob Numeric value between 0 and 1, only required when
+#'        `method = "quantile"`. Specifies the cumulative probability at which
+#'        to evaluate the quantile.
 #'
 #' @return A numeric value corresponding to the requested point estimate.
 #'
@@ -431,7 +555,8 @@ get_mean_posterior_rho <- function(
 get_point_estimate <- function(
     val,
     dens,
-    method = c("mean", "median")
+    method = c("mean", "median", "quantile"),
+    prob = NULL
 ) {
 
   if (length(val) != length(dens)) {
@@ -446,13 +571,19 @@ get_point_estimate <- function(
     result <- sum(val * dens) * dx
   } else {
     cdf <- cumsum(dens) * dx
-    median_approx <- stats::approx(
+    if (method == "median" && is.null(prob)) {
+      prob <- 0.5
+    }
+    if (is.null(prob)) {
+      rlang::abort(message = "No value for 'prob' provided.")
+    }
+    result <- stats::approx(
       x = cdf,
       y = val,
-      xout = 0.5,
+      xout = prob,
       ties = "ordered"
     )
-    result <- median_approx[["y"]]
+    result <- result[["y"]]
   }
 
   return(result)
@@ -521,5 +652,232 @@ get_interval <- function(
 
   result <- dplyr::bind_rows(intervals)
   return(result)
+
+}
+
+#' Sample quantiles from posterior correlation densities
+#'
+#' @description
+#' Generates random quantiles from the posterior density function of a
+#' correlation coefficient for each MCMC draw. This enables approximate
+#' sampling from the full posterior distribution over correlations for
+#' population-level inference.
+#'
+#' @param .data A data frame output by [run_plausible_cors()], containing one
+#'   row per MCMC draw with columns `.draw`, `r`, and `posterior_updf`.
+#' @param n_samples Integer specifying the number of quantiles to sample per
+#'   MCMC draw. Defaults to `1`.
+#' @param starter_seed Optional scalar numeric used to seed the random number
+#'   generator for reproducibility. If `NA` (default), no seed is set.
+#'
+#' @return A [tibble::tibble] with one row per sampled quantile and columns:
+#'   \item{.draw}{The MCMC draw ID}
+#'   \item{r}{The original correlation estimate for the draw}
+#'   \item{quantile}{A randomly sampled quantile from the posterior density}
+#'
+#' @details
+#' The posterior density function is first approximated using
+#' [get_posterior_rho_densities()], and quantiles are then sampled using
+#' inverse transform sampling. If a seed is provided in `starter_seed`, it is
+#' used to generate different seeds for each MCMC draw, to ensure independence
+#' in the quantiles drawn for each posterior distribution, while retaining
+#' reproducibility.
+#'
+#' @noRd
+get_sampled_quantiles <- function(
+    .data,
+    n_samples = 1,
+    starter_seed = NA
+) {
+
+  validate_column_inputs(
+    col_names = c(".draw", "r", "posterior_updf"),
+    data_frame = .data,
+    data_name = ".data"
+  )
+
+  draw_quantiles <- function(density_grid, n_quantiles, seed = NA) {
+    if (!is.na(seed)) {
+      probs <- withr::with_seed(
+        seed = seed,
+        code = stats::runif(n = n_quantiles, min = 0, max = 1)
+      )
+    } else {
+      probs <- stats::runif(n = n_quantiles, min = 0, max = 1)
+    }
+    quantiles <- get_point_estimate(
+      val = density_grid[["x"]],
+      dens = density_grid[["density"]],
+      method = "quantile",
+      prob = probs
+    )
+    result <- tibble::tibble(
+      quantile = quantiles[["y"]]
+    )
+    return(result)
+  }
+
+  seeds <- NA
+  if (!is.na(starter_seed)) {
+    seeds <- withr::with_seed(
+      seed = starter_seed,
+      code = sample.int(
+        n = nrow(.data) * 1e3,
+        size = nrow(.data),
+        replace = FALSE
+      )
+    )
+  }
+
+  result <- .data %>%
+    get_posterior_rho_densities() %>%
+    tidyr::nest(
+      density_grid = tidyr::all_of(c("x", "density")),
+      .by = tidyr::all_of(c(".draw", "r"))
+    ) %>%
+    dplyr::mutate(
+      seed = seeds
+    ) %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(
+      samples = list(
+        draw_quantiles(
+          density_grid = .data[["density_grid"]],
+          n_quantiles = n_samples,
+          seed = .data[["seed"]]
+        )
+      ),
+      .keep = "unused"
+    ) %>%
+    dplyr::ungroup() %>%
+    tidyr::unnest(tidyr::all_of("samples"))
+
+  return(result)
+
+}
+
+#' Summarise posterior samples
+#'
+#' @description
+#' Summarises a single numeric column from a data frame containing posterior
+#' samples (or any numeric data), providing a point estimate (mean or median),
+#' credible intervals (e.g., highest-density continous intervals or quantiles),
+#' and the directionality of the distribution (positive or negative).
+#'
+#' @param .data A data frame containing a single numeric column representing
+#'   posterior samples or any distribution of interest.
+#' @param ... Additional arguments passed to [ggdist::point_interval()].
+#' @param point_method A string indicating the point estimate to compute. Can
+#'   either be `"mean"` (default) or `"median"`.
+#' @param interval_width Numeric vector of values between 0 and 1 specifying the
+#'   widths of the credible intervals to calculate. Default is
+#'   `c(0.5, 0.8, 0.95)`.
+#' @param interval_method A string indicating the method for computing intervals.
+#'   Can either be `"hdci"` (highest-density continous intervals; default) or
+#'   `"qi"` (quantile intervals).
+#'
+#' @return A [tibble::tibble] summarizing the posterior samples.
+#'
+#' @noRd
+summarise_samples <- function(
+    .data,
+    ...,
+    point_method = c("mean", "median"),
+    interval_width = c(0.5, 0.8, 0.95),
+    interval_method = c("hdci", "qi")
+) {
+
+  data <- .data %>%
+    dplyr::select(dplyr::where(is.numeric))
+
+  varname <- colnames(data)
+  if (length(varname) != 1) {
+    rlang::abort(
+      message = "Input data frame should only contain a single numeric column."
+    )
+  }
+
+  p_dir <- max(
+    mean(data[[varname]] > 0),
+    mean(data[[varname]] < 0)
+  )
+
+  result <- data %>%
+    ggdist::point_interval(
+      .width = interval_width,
+      .point = eval(rlang::sym(point_method)),
+      .interval = eval(rlang::sym(interval_method)),
+      ...
+    ) %>%
+    dplyr::select(
+      -dplyr::all_of(c(".point", ".interval"))
+    ) %>%
+    dplyr::rename_with(
+      .fn = ~ gsub("^\\.", "", .x),
+      .cols = dplyr::starts_with(".")
+    ) %>%
+    dplyr::rename(
+      dplyr::all_of(c(point_method = varname))
+    ) %>%
+    dplyr::mutate(
+      p_dir = p_dir
+    )
+
+  return(result)
+
+}
+
+#' Validate column name inputs for functions working with data frames
+#'
+#' @description
+#' Internal helper function that checks whether user-supplied column names are
+#' valid. Optionally verifies that the named columns exist in a provided data
+#' frame.
+#'
+#' @param col_names Named character vector of column names to validate.
+#' @param data_frame Optional data frame to check column existence for.
+#' @param data_name Optional name of the data frame for error messages.
+#'
+#' @return Invisibly returns NULL if validation passes, otherwise raises an
+#'         error.
+#' @noRd
+validate_column_inputs <- function(
+    col_names,
+    data_frame = NULL,
+    data_name = NULL
+) {
+  invalid_cols <- vapply(
+    X = col_names,
+    FUN = function(col_name) {
+      length(col_name) != 1 || !is.character(col_name)
+    },
+    FUN.VALUE = logical(1)
+  )
+  if (any(invalid_cols)) {
+    bad_names <- names(col_names)[invalid_cols]
+    rlang::abort(
+      message = paste0(
+        "Input '", paste(bad_names, collapse = "', '"),
+        "' must be a single string denoting a column."
+      )
+    )
+  }
+
+  if (!is.null(data_frame)) {
+    if (is.null(data_name)) {
+      data_name <- rlang::as_label(rlang::enquo(data_frame))
+    }
+    missing_cols <- setdiff(unname(col_names), names(data_frame))
+    if (length(missing_cols) > 0) {
+      rlang::abort(
+        message = paste0(
+          "Missing required columns in '", data_name, "': ",
+          paste(missing_cols, collapse = ", "), "."
+        )
+      )
+    }
+  }
+
+  return(invisible(x = NULL))
 
 }

@@ -45,9 +45,10 @@ in a uniform prior. See [posterior_rho_updf()] for details.}
 }
 \value{
 A [tibble::tbl_df-class] with one row per MCMC sample containing:
-  \item{r}{Pearson correlation coefficient for each MCMC sample}
+  \item{.draw}{The MCMC sample ID}
+  \item{r}{Pearson correlation coefficient}
   \item{n}{Number of complete observations used for correlation calculation}
-  \item{posterior_density}{Function object for evaluating the unnormalized
+  \item{posterior_updf}{Function object for evaluating the unnormalised
         posterior density at any correlation value between -1 and 1}
 }
 \description{

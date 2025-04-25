@@ -5,14 +5,14 @@
 \title{Summarise plausible correlation estimates}
 \usage{
 summarise_plausible_cor(
-  x,
+  .data,
   point_method = c("mean", "median"),
   interval_width = c(0.5, 0.8, 0.95),
   interval_method = c("hdci", "qi")
 )
 }
 \arguments{
-\item{x}{A data frame output from [run_plausible_cor()].}
+\item{.data}{A data frame output from [run_plausible_cor()].}
 
 \item{point_method}{Method used to compute the central tendency of the
 correlation estimate. One of `"mean"` or `"median"`. Default is
