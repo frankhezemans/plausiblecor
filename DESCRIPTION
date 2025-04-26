@@ -38,6 +38,7 @@ BugReports: https://github.com/frankhezemans/plausiblecor/issues
 Imports: 
     dplyr,
     ggdist,
+    ggplot2,
     hypergeo,
     magrittr,
     rlang,
