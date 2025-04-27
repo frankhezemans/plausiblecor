@@ -71,7 +71,7 @@ A [ggplot2::ggplot()] object.
 }
 \description{
 Visualises the distribution of sample Pearson correlation coefficients
-obtained from `run_plausible_cor()`, using either a dotplot or histogram
+obtained from [`run_plausible_cor()`], using either a dotplot or histogram
 style. This function wraps [ggdist::stat_dotsinterval()] or
 [ggdist::stat_histinterval()], providing a quick way to plot uncertainty
 about the sample correlations.

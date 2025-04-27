@@ -2,7 +2,7 @@
 #'
 #' @description
 #' Visualises the distribution of sample Pearson correlation coefficients
-#' obtained from `run_plausible_cor()`, using either a dotplot or histogram
+#' obtained from [`run_plausible_cor()`], using either a dotplot or histogram
 #' style. This function wraps [ggdist::stat_dotsinterval()] or
 #' [ggdist::stat_histinterval()], providing a quick way to plot uncertainty
 #' about the sample correlations.
@@ -76,29 +76,14 @@ plot_sample_cor <- function(
     data_name = ".data"
   )
 
-  draw_rows <- function(data, n = n_draws) {
-    dplyr::slice_sample(
-      .data = data,
-      n = n,
-      replace = FALSE
-    )
-  }
-
   plot_data <- .data %>%
     dplyr::distinct(
       dplyr::all_of(c(".draw", "r"))
+    ) %>%
+    draw_rows(
+      n_draws = n_draws,
+      rng_seed = rng_seed
     )
-
-  if (n_draws < nrow(plot_data)) {
-    if (!is.null(rng_seed)) {
-      plot_data <- withr::with_seed(
-        seed = rng_seed,
-        code = draw_rows(data = plot_data)
-      )
-    } else {
-      plot_data <- draw_rows(data = plot_data)
-    }
-  }
 
   base_plot <- ggplot2::ggplot(
     data = plot_data,
@@ -181,6 +166,180 @@ plot_sample_cor <- function(
 
   return(result)
 
+}
+
+#' Plot correlation posterior distributions from plausible value analysis
+#'
+#' @description
+#' Visualises density traces of posterior distributions of Pearson correlation
+#' coefficients obtained from [`run_plausible_cor()`], along with the mean
+#' posterior density across all MCMC samples.
+#'
+#' @param .data A data frame returned by [run_plausible_cor()], containing at
+#'        least `.draw` and `r` columns.
+#' @param n_draws Integer specifying the maximum number of MCMC draws to plot.
+#'        Default is `Inf` (use all draws).
+
+#' @param .data A data frame returned by [run_plausible_cor()], containing
+#'   `.draw`, `r`, and `posterior_updf` columns.
+#' @param n_draws Integer specifying the maximum number of MCMC draws to plot.
+#'   Default is `500` to avoid overplotting of density traces.
+#' @param trace_colour Colour for individual trace lines. Defaults to dark gray
+#'   (`"#4C4C4C"`).
+#' @param trace_alpha Alpha (transparency) for individual trace lines. Defaults
+#'   to `0.1`.
+#' @param trace_linewidth Line width for individual trace lines. Defaults to
+#'   `0.1`.
+#' @param mean_colour Colour for the mean density trace. Defaults to blue
+#'   (`"#377EB8"`).
+#' @param mean_alpha Alpha (transparency) for the mean density trace. Defaults
+#'   to `1`.
+#' @param mean_linewidth Line width for the mean density trace. Defaults to `3`.
+#' @param zero_refline Logical. If `TRUE` (default), adds a vertical dashed line
+#'        at 0 to help reference null correlations.
+#' @param x_title Label for the x-axis. Defaults to [`ggplot2::waiver()`waiver]
+#'   (no label).
+#' @param x_axis_limits Optional numeric vector of length 2 to control x-axis
+#'        limits using [ggplot2::coord_cartesian()].
+#' @param plot_text_scaling Numeric scaling factor for axis text and title
+#'        size. Default is `1`.
+#' @param rng_seed Optional integer seed for reproducible sampling of draws.
+#'
+#' @details
+#' This function plots the plausible posterior distributions of the Pearson correlation
+#' coefficient obtained via [run_plausible_cor()]. It shows:
+#'
+#' - Density traces for a random subset (`n_draws`) of individual posterior distributions,
+#'   reflecting uncertainty both in individual parameter estimates and in generalising to the population.
+#' - The mean posterior density across all draws, providing a population-level summary of the
+#'   plausible correlation.
+#'
+#' Subsampling with `n_draws` is used to reduce overplotting when many MCMC draws are available.
+#' However, the mean posterior density is always based on the full data.
+#'
+#' @return A [ggplot2::ggplot] object.
+#'
+#' @seealso [run_plausible_cor()].
+#'
+#' @export
+plot_population_cor <- function(
+    .data,
+    n_draws = 500,
+    trace_colour = "#4C4C4C",
+    trace_alpha = 0.1,
+    trace_linewidth = 0.1,
+    mean_colour = "#377EB8",
+    mean_alpha = 1,
+    mean_linewidth = 3,
+    zero_refline = TRUE,
+    x_title = ggplot2::waiver(),
+    x_axis_limits = NULL,
+    plot_text_scaling = 1,
+    rng_seed = NULL
+) {
+
+  validate_column_inputs(
+    col_names = c(".draw", "r", "posterior_updf"),
+    data_frame = .data,
+    data_name = ".data"
+  )
+
+  trace_data <- .data %>%
+    get_posterior_rho_densities()
+
+  mean_data <- trace_data %>%
+    get_mean_posterior_rho()
+
+  plot_data <- .data %>%
+    dplyr::select(
+      dplyr::all_of(".draw")
+    ) %>%
+    draw_rows(
+      n_draws = n_draws,
+      rng_seed = rng_seed
+    ) %>%
+    dplyr::left_join(
+      y = trace_data,
+      by = ".draw"
+    )
+
+  base_plot <- ggplot2::ggplot(
+    data = plot_data,
+    mapping = ggplot2::aes(
+      x = .data[["x"]]
+    )
+  )
+
+  if (zero_refline) {
+    base_plot <- base_plot +
+      ggplot2::geom_vline(
+        xintercept = 0,
+        linetype = "dashed",
+        linewidth = 1.25,
+        colour = "black"
+      )
+  }
+
+  result <- base_plot +
+    ggplot2::geom_line(
+      mapping = ggplot2::aes(
+        y = .data[["density"]],
+        group = .data[["r"]]
+      ),
+      alpha = trace_alpha,
+      colour = trace_colour,
+      linewidth = trace_linewidth
+    ) +
+    ggplot2::geom_line(
+      data = mean_data,
+      mapping = ggplot2::aes(
+        x = .data[["x"]],
+        y = .data[["mean_density"]]
+      ),
+      alpha = mean_alpha,
+      colour = mean_colour,
+      linewidth = mean_linewidth
+    ) +
+    ggplot2::labs(
+      x = x_title
+    )
+
+  result <- add_theme_elements(
+    x = result,
+    plot_text_scaling = plot_text_scaling
+  )
+
+  if (!is.null(x_axis_limits)) {
+    result <- result +
+      ggplot2::coord_cartesian(xlim = x_axis_limits)
+  }
+
+  return(result)
+
+}
+
+#' @noRd
+draw_rows <- function(.data, n_draws, rng_seed) {
+  if (n_draws >= nrow(.data)) {
+    return(.data)
+  }
+  if (!is.null(rng_seed) && is.finite(rng_seed)) {
+    result <- withr::with_seed(
+      seed = rng_seed,
+      code = .data %>%
+        dplyr::slice_sample(
+          n = n_draws,
+          replace = FALSE
+        )
+    )
+  } else {
+    result <- .data %>%
+      dplyr::slice_sample(
+        n = n_draws,
+        replace = FALSE
+      )
+  }
+  return(result)
 }
 
 #' @noRd
