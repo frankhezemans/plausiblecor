@@ -286,7 +286,7 @@ summarise_plausible_cor <- function(
 #'
 #' @description
 #' Compares the posterior distributions of plausible correlation values, as
-#' returned by two separate calls to [run_plausible_cors()]. Supports two
+#' returned by two separate calls to [run_plausible_cors()]. Uses two methods
 #' methods for defining the distribution of the difference: a **sample-based**
 #' comparison, which subtracts the correlation values from matching MCMC
 #' samples, and a **population-based** comparison, which draws quantiles from
@@ -295,11 +295,6 @@ summarise_plausible_cor <- function(
 #'
 #' @param x,y Data frames returned by [run_plausible_cors()], each containing
 #'   the columns `.draw`, `r`, and `posterior_updf`.
-#' @param comparison_method Character string specifying how to compare the
-#'   plausible correlations. Must be one of `"sample"` (default) or
-#'   `"population"`. `"sample"` compares paired correlation values from
-#'   matching `.draw` IDs; `"population"` compares posterior distributions of
-#'   the correlation by randomly drawn quantiles.
 #' @param point_method Character string specifying the summary point estimate
 #'   of the delta distribution. Either `"mean"` (default) or `"median"`.
 #' @param interval_width Numeric vector of interval widths (between 0 and 1)
@@ -318,15 +313,14 @@ summarise_plausible_cor <- function(
 #'  between correlation coefficients.
 #'
 #' @details
-#' When using `comparison_method = "sample"`, the function computes the
-#' difference in the Pearson correlation coefficient for each `.draw` shared
-#' between the two data frames.
+#' For the sample-based comparison, the function computes the difference in the
+#' Pearson correlation coefficient for each `.draw` shared between the two data
+#' frames.
 #'
-#' When using `comparison_method = "population"`, the function draws quantile
-#' value(s) from the posterior distribution of each Pearson correlation (as
-#' defined by `posterior_updf`) and computes the difference. This allows for
-#' comparison at the population level rather than the specific sample of
-#' subjects.
+#' For the population-based comparison, the function draws quantile value(s)
+#' from the posterior distribution of each Pearson correlation (as defined by
+#' `posterior_updf`) and computes the difference. This allows for comparison at
+#' the population level rather than the specific sample of subjects.
 #'
 #' This function was adapted from code previously released with the Dynamic
 #' Models of Choice toolbox (Heathcote et al., 2019).
@@ -346,7 +340,6 @@ summarise_plausible_cor <- function(
 compare_plausible_cors <- function(
     x,
     y,
-    comparison_method = c("sample", "population"),
     point_method = c("mean", "median"),
     interval_width = c(0.5, 0.8, 0.95),
     interval_method = c("hdci", "qi"),
@@ -380,69 +373,76 @@ compare_plausible_cors <- function(
     )
   }
 
-  comparison_method <- rlang::arg_match(arg = comparison_method)
   point_method <- rlang::arg_match(arg = point_method)
   interval_method <- rlang::arg_match(arg = interval_method)
 
-  if (comparison_method == "sample") {
+  sample_joined_data <- dplyr::inner_join(
+    x = dplyr::select(
+      .data = x,
+      dplyr::all_of(c(".draw", "r"))
+    ),
+    y = dplyr::select(
+      .data = y,
+      dplyr::all_of(c(".draw", "r"))
+    ),
+    by = ".draw",
+    suffix = c("_x", "_y")
+  )
 
-    joined_data <- dplyr::inner_join(
-      x = dplyr::select(
-        .data = x,
-        dplyr::all_of(c(".draw", "r"))
-      ),
-      y = dplyr::select(
-        .data = y,
-        dplyr::all_of(c(".draw", "r"))
-      ),
-      by = ".draw",
-      suffix = c("_x", "_y")
-    )
-
-    delta_df <- joined_data %>%
-      dplyr::mutate(
-        delta = .data[["r_x"]] - .data[["r_y"]],
-        keep = "none"
-      )
-
-  } else {
-
-    posterior_draws <- Map(
-      f = function(data, seed, n = n_samples) {
-        get_sampled_quantiles(
-          .data = data,
-          n_samples = n,
-          starter_seed = seed
-        )
-      },
-      list(x = x, y = y),
-      stats::setNames(object = rng_seed, nm = c("x", "y"))
-    )
-
-    delta_df <- dplyr::bind_rows(
-      posterior_draws,
-      .id = "dataset"
+  sample_delta_summary <- sample_joined_data %>%
+    dplyr::mutate(
+      delta = .data[["r_x"]] - .data[["r_y"]],
+      .keep = "none"
     ) %>%
-      dplyr::select(
-        dplyr::all_of(c("dataset", ".draw", "quantile"))
-      ) %>%
-      tidyr::pivot_wider(
-        id_cols = tidyr::all_of(".draw"),
-        names_from = "dataset",
-        values_from = "quantile"
-      ) %>%
-      dplyr::mutate(
-        delta = .data[["x"]] - .data[["y"]],
-        .keep = "none"
-      )
-
-  }
-
-  result <- delta_df %>%
     summarise_samples(
       point_method = point_method,
       interval_width = interval_width,
       interval_method = interval_method
+    ) %>%
+    dplyr::mutate(type = "sample") %>%
+    dplyr::relocate(dplyr::all_of("type"))
+
+  posterior_draws <- Map(
+    f = function(data, seed, n = n_samples) {
+      get_sampled_quantiles(
+        .data = data,
+        n_samples = n,
+        starter_seed = seed
+      )
+    },
+    data = list(x = x, y = y),
+    seed = stats::setNames(object = rng_seed, nm = c("x", "y"))
+  )
+
+  population_delta_summary <- dplyr::bind_rows(
+    posterior_draws,
+    .id = "dataset"
+  ) %>%
+    dplyr::select(
+      dplyr::all_of(c("dataset", ".draw", "quantile"))
+    ) %>%
+    tidyr::pivot_wider(
+      id_cols = tidyr::all_of(".draw"),
+      names_from = "dataset",
+      values_from = "quantile"
+    ) %>%
+    dplyr::mutate(
+      delta = .data[["x"]] - .data[["y"]],
+      .keep = "none"
+    ) %>%
+    summarise_samples(
+      point_method = point_method,
+      interval_width = interval_width,
+      interval_method = interval_method
+    ) %>%
+    dplyr::mutate(type = "population") %>%
+    dplyr::relocate(dplyr::all_of("type"))
+
+  result <- dplyr::bind_rows(
+    sample_delta_summary, population_delta_summary
+  ) %>%
+    dplyr::mutate(
+      type = factor(.data[["type"]])
     )
 
   return(result)
@@ -452,8 +452,11 @@ compare_plausible_cors <- function(
 #' Evaluate posterior density functions over a grid
 #'
 #' @description
-#' Internal helper that evaluates each posterior density function in the output
-#' of [run_plausible_cor()] over a shared grid from -1 to 1.
+#' Helper function that evaluates each posterior density function in the output
+#' of [run_plausible_cor()] over a shared grid from -1 to 1. Typical users
+#' would not have to call this function, instead relying on
+#' [summarise_plausible_cor()], [compare_plausible_cors()], and
+#' [plot_population_cor()].
 #'
 #' @param .data Data frame output from [run_plausible_cor()].
 #' @param grid_spacing The step size for the grid of correlation values to
@@ -461,7 +464,8 @@ compare_plausible_cors <- function(
 #'
 #' @return A data frame where each row corresponds to one density value for a
 #'         given posterior density function.
-#' @noRd
+#'
+#' @export
 get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
 
   validate_column_inputs(
@@ -470,46 +474,33 @@ get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
     data_name = ".data"
   )
 
-  basic_cor_df <- .data %>%
-    dplyr::select(dplyr::all_of(c(".draw", "r")))
-
   rho_grid <- seq(from = -1, to = 1, by = grid_spacing)
 
+  single_density_grid <- function(
+    draw_id, r_val, updf, grid = rho_grid, dx = grid_spacing
+  ) {
+    if (!rlang::is_function(updf)) {
+      return(NULL)
+    }
+    dens <- updf(grid)
+    dens_norm <- dens / sum(dens * dx)
+    result <- tibble::tibble(
+      .draw = draw_id,
+      r = r_val,
+      x = grid,
+      density = dens_norm
+    )
+    return(result)
+  }
+
   posterior_rho_densities_list <- Map(
-    f = function(updf, r_val, grid = rho_grid) {
-      if (!rlang::is_function(updf)) {
-        return(NULL)
-      }
-      dens <- updf(grid)
-      dens_norm <- dens / sum(dens * diff(grid)[1])
-      result <- tibble::tibble(
-        !!rlang::sym(as.character(r_val)) := dens_norm
-      )
-      return(result)
-    },
-    .data[["posterior_updf"]],
-    .data[["r"]]
+    f = single_density_grid,
+    draw_id = .data[[".draw"]],
+    r_val = .data[["r"]],
+    updf = .data[["posterior_updf"]]
   )
 
-  result <- posterior_rho_densities_list %>%
-    dplyr::bind_cols() %>%
-    dplyr::mutate(x = rho_grid) %>%
-    tidyr::pivot_longer(
-      cols = -dplyr::all_of("x"),
-      names_to = "r",
-      values_to = "density"
-    ) %>%
-    dplyr::mutate(
-      r = as.numeric(.data[["r"]])
-    ) %>%
-    dplyr::select(
-      dplyr::all_of(c("r", "x", "density"))
-    ) %>%
-    dplyr::left_join(
-      y = basic_cor_df,
-      by = ".draw"
-    ) %>%
-    dplyr::relocate(dplyr::all_of(".draw"))
+  result <- dplyr::bind_rows(posterior_rho_densities_list)
 
   return(result)
 
@@ -518,14 +509,17 @@ get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
 #' Compute mean posterior correlation density
 #'
 #' @description
-#' Internal helper that computes the mean posterior density across MCMC samples,
-#' based on the evaluated densities on a shared grid.
+#' Helper function that computes the mean posterior density across MCMC samples,
+#' based on the evaluated densities on a shared grid. Typical users would not
+#' have to call this function, instead relying on [summarise_plausible_cor()],
+#' [compare_plausible_cors()], and [plot_population_cor()].
 #'
 #' @param .data Data frame output from [get_posterior_rho_densities()].
 #'
 #' @return A tibble with columns `x` (grid points) and `density`
 #'         (mean posterior density).
-#' @noRd
+#'
+#' @export
 get_mean_posterior_rho <- function(.data) {
 
   validate_column_inputs(
@@ -730,9 +724,7 @@ get_sampled_quantiles <- function(
       method = "quantile",
       prob = probs
     )
-    result <- tibble::tibble(
-      quantile = quantiles[["y"]]
-    )
+    result <- tibble::tibble(quantile = quantiles)
     return(result)
   }
 
@@ -836,7 +828,7 @@ summarise_samples <- function(
       .cols = dplyr::starts_with(".")
     ) %>%
     dplyr::rename(
-      dplyr::all_of(c(point_method = varname))
+      !!point_method := !!rlang::sym(varname)
     ) %>%
     dplyr::mutate(
       p_dir = p_dir

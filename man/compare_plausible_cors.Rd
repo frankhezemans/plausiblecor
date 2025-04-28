@@ -7,7 +7,6 @@
 compare_plausible_cors(
   x,
   y,
-  comparison_method = c("sample", "population"),
   point_method = c("mean", "median"),
   interval_width = c(0.5, 0.8, 0.95),
   interval_method = c("hdci", "qi"),
@@ -18,12 +17,6 @@ compare_plausible_cors(
 \arguments{
 \item{x, y}{Data frames returned by [run_plausible_cors()], each containing
 the columns `.draw`, `r`, and `posterior_updf`.}
-
-\item{comparison_method}{Character string specifying how to compare the
-plausible correlations. Must be one of `"sample"` (default) or
-`"population"`. `"sample"` compares paired correlation values from
-matching `.draw` IDs; `"population"` compares posterior distributions of
-the correlation by randomly drawn quantiles.}
 
 \item{point_method}{Character string specifying the summary point estimate
 of the delta distribution. Either `"mean"` (default) or `"median"`.}
@@ -49,7 +42,7 @@ A [tibble::tibble()] containing summary statistics of the difference
 }
 \description{
 Compares the posterior distributions of plausible correlation values, as
-returned by two separate calls to [run_plausible_cors()]. Supports two
+returned by two separate calls to [run_plausible_cors()]. Uses two methods
 methods for defining the distribution of the difference: a **sample-based**
 comparison, which subtracts the correlation values from matching MCMC
 samples, and a **population-based** comparison, which draws quantiles from
@@ -57,15 +50,14 @@ each posterior distribution (accounting for population uncertainty) before
 computing the difference.
 }
 \details{
-When using `comparison_method = "sample"`, the function computes the
-difference in the Pearson correlation coefficient for each `.draw` shared
-between the two data frames.
+For the sample-based comparison, the function computes the difference in the
+Pearson correlation coefficient for each `.draw` shared between the two data
+frames.
 
-When using `comparison_method = "population"`, the function draws quantile
-value(s) from the posterior distribution of each Pearson correlation (as
-defined by `posterior_updf`) and computes the difference. This allows for
-comparison at the population level rather than the specific sample of
-subjects.
+For the population-based comparison, the function draws quantile value(s)
+from the posterior distribution of each Pearson correlation (as defined by
+`posterior_updf`) and computes the difference. This allows for comparison at
+the population level rather than the specific sample of subjects.
 
 This function was adapted from code previously released with the Dynamic
 Models of Choice toolbox (Heathcote et al., 2019).
