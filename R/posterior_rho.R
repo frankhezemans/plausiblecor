@@ -15,23 +15,40 @@
 #'        below). Default is `1`, resulting in a uniform prior.
 #' @param n_bins Integer. Number of grid points for the approximation, default
 #'        is `1000`.
+#' @param max_iter Integer. Maximum number of iterations (attempts) to solve
+#'        generalised hypergeometric functions that are necessary to compute
+#'        the posterior density. Default is `1e7`. See details.
 #' @param ... Additional arguments passed to [stats::approxfun()].
 #'
 #' @return A function that evaluates the unnormalized posterior density at any
 #'         correlation value between `-1` and `1`.
 #'
 #' @details
-#' The function implements the analytical posterior for Pearson's correlation
-#' coefficient as described in Ly et al. (2018). For r = 0, Jeffreys'
-#' approxmation is used; otherwise the exact solution given by Ly et al. (2018)
-#' is used.
+#' The unnormalised probability density of the posterior distribution of the
+#' correlation coefficient is computed for a discretised grid of values. Then,
+#' linear interpolation between these density values is used to construct an
+#' approximation to the unnormalised probability density *function* of the
+#' posterior, using [stats::approxfun()].
 #'
-#' The prior on the correlation coefficient is a so-called stretched beta
-#' distribution, which is a beta distribution with its shape parameters alpha
-#' and beta set to alpha = beta = 1/kappa, and its minimum and maximum
-#' stretched to -1 and 1, respectively. This creates a symmetric distribution
-#' centered at zero and its domain stretched to cover the full range of the
-#' correlation coefficient.
+#' The discrete grid of correlation values is set adaptively, so that there are
+#' many estimates of the density near the posterior mode (i.e., the observed
+#' correlation) and near the endpoints of +1 and -1.
+#'
+#' Computing the posterior density involves several evaluations of the
+#' generalised hypergeometric function, which is handled internally by
+#' [hypergeo::genhypergeo()]. In some cases, especially when the observed
+#' correlation approaches +1 or -1, [hypergeo::genhypergeo()] may need several
+#' thousand attempts to find the solution. Here, we cautiously set the default
+#' `max_iter` to `1e7`, but note that the original default in
+#' [hypergeo::genhypergeo()] is much lower (`2e3`).
+#'
+#' Any undefined or non-finite estimate of the posterior density is treated as
+#' `NA` and ignored by [stats::approxfun()] when constructing the function.
+#'
+#' The prior is a stretched beta distribution with shape parameters alpha =
+#' beta = 1/kappa, scaled to the interval [-1, 1]. This creates a symmetric
+#' distribution centered at zero and its domain stretched to cover the full
+#' range of the correlation coefficient.
 #'
 #' This function was adapted from code previously released with the Dynamic
 #' Models of Choice toolbox (Heathcote et al., 2019).
@@ -46,26 +63,23 @@
 #' 51, 961-985. https://doi.org/10.3758/s13428-018-1067-y
 #'
 #' @export
-posterior_rho_updf <- function(r, n, kappa = 1, n_bins = 1e3, ...) {
+posterior_rho_updf <- function(
+    r, n, kappa = 1, n_bins = 1e3, max_iter = 1e7, ...
+) {
 
-  validate_posterior_rho_updf_input(r, n, kappa, n_bins)
-
-  input_warn_rounded <- function(param) {
-    rlang::warn(
-      message = paste0(
-        "Input '", param, "' has been rounded to the nearest integer."
-      )
-    )
-  }
+  validate_posterior_rho_updf_input(r, n, kappa, n_bins, max_iter)
 
   if (n != round(n)) {
     input_warn_rounded(param = "n")
     n <- round(n)
   }
-
   if (n_bins != round(n_bins)) {
     input_warn_rounded(param = "n_bins")
     n_bins <- round(n_bins)
+  }
+  if (max_iter != round(max_iter)) {
+    input_warn_rounded(param = "max_iter")
+    max_iter <- round(max_iter)
   }
 
   rho_grid <- create_rho_grid(r, n, n_bins)
@@ -80,85 +94,16 @@ posterior_rho_updf <- function(r, n, kappa = 1, n_bins = 1e3, ...) {
     rlang::abort(message = "Computation of posterior density failed.")
   }
   if (any(!is.finite(d))) {
-    rlang::warn(message = "Some posterior density values were non-finite.")
-  }
-
-  result <- stats::approxfun(x = rho_grid, y = d, ...)
-
-  return(result)
-
-}
-
-#' Validate inputs for posterior_rho_updf function
-#'
-#' @param r Numeric value. The observed sample correlation coefficient.
-#' @param n Numeric value. The sample size.
-#' @param kappa Numeric value. Parameter controlling the concentration of the
-#'        prior.
-#' @param n_bins Integer. Number of grid points for the approximation.
-#'
-#' @return NULL invisibly if validation passes, otherwise aborts with an error
-#'         message.
-#' @noRd
-validate_posterior_rho_updf_input <- function(r, n, kappa, n_bins) {
-
-  input_abort <- function(param, conditions) {
-    rlang::abort(
+    rlang::warn(
       message = paste0(
-        "Input '", param, "' must be a single finite value ", conditions, "."
+        "Some posterior densities were non-finite; will be ignored for ",
+        "constructing the UPDF."
       )
     )
+    d[!is.finite(d)] <- NA_real_
   }
 
-  if (length(r) != 1 || !is.numeric(r) || !is.finite(r) || abs(r) > 1) {
-    input_abort(param = "r", conditions = "between -1 and 1 (inclusive)")
-  }
-  if (length(n) != 1 || !is.numeric(n) || !is.finite(n) || n < 3) {
-    input_abort(param = "n", conditions = "greater than or equal to 3")
-  }
-  if (
-    length(kappa) != 1 || !is.numeric(kappa) || !is.finite(kappa) || kappa <= 0
-  ) {
-    input_abort(param = "kappa", conditions = "that is strictly positive")
-  }
-  if (
-    length(n_bins) != 1 || !is.numeric(n_bins) || !is.finite(n_bins) ||
-    n_bins < 10
-  ) {
-    input_abort(param = "n_bins", conditions = "greater than or equal to 10")
-  }
-
-  return(invisible(x = NULL))
-
-}
-
-#' Create grid of correlation coefficient values
-#'
-#' @description
-#' Creates a grid of correlation coefficient values for numerical approximation,
-#' with higher density of points around the observed correlation coefficient
-#' and around the endpoints -1 and +1.
-#'
-#' @param r Numeric value. The observed sample correlation coefficient.
-#' @param n Numeric value. The sample size.
-#' @param n_bins Integer. Number of grid points desired.
-#'
-#' @return Numeric vector of correlation values between -1 and 1.
-#' @noRd
-create_rho_grid <- function(r, n, n_bins) {
-
-  unit_grid <- stats::qlogis(
-    p = seq(from = 0, to = 1, length.out = n_bins + 2)
-  )
-  unit_grid <- unit_grid[-c(1, length(unit_grid))]
-
-  result <- unique(sort(c(
-    -1,
-    seq(-0.999, -0.9, by = 0.01),
-    tanh(atanh(r) + unit_grid / sqrt(n)),
-    seq(0.9, 0.999, by = 0.01),
-    1
-  )))
+  result <- stats::approxfun(x = rho_grid, y = d, na.rm = TRUE, ...)
 
   return(result)
 
@@ -170,12 +115,14 @@ create_rho_grid <- function(r, n, n_bins) {
 #' @param n Numeric value. The sample size.
 #' @param rho_grid Numeric vector. Grid of correlation values to evaluate.
 #' @param kappa Numeric value. Prior concentration parameter.
+#' @param max_iter Integer. Maximum number of iterations (attempts) to solve
+#'        generalised hypergeometric functions.
 #'
 #' @return Numeric vector of unnormalized posterior density values.
 #' @noRd
-posterior_rho_exact <- function(r, n, rho_grid, kappa) {
-  result <- bf_rho_exact(r, n, kappa) *
-    likelihood_rho_exact(r, n, rho_grid) *
+posterior_rho_exact <- function(r, n, rho_grid, kappa, max_iter) {
+  result <- bf_rho_exact(r, n, kappa, max_iter) *
+    likelihood_rho_exact(r, n, rho_grid, max_iter) *
     prior_rho(rho_grid, kappa)
   return(result)
 }
@@ -189,11 +136,13 @@ posterior_rho_exact <- function(r, n, rho_grid, kappa) {
 #' @param n Numeric value. The sample size.
 #' @param rho_grid Numeric vector. Grid of correlation values to evaluate.
 #' @param kappa Numeric value. Prior concentration parameter.
+#' @param max_iter Integer. Maximum number of iterations (attempts) to solve
+#'        generalised hypergeometric functions.
 #'
 #' @return Numeric vector of unnormalized posterior density values.
 #' @noRd
-posterior_rho_jeffreys <- function(r, n, rho_grid, kappa) {
-  result <- bf_rho_jeffreys(r, n, kappa) *
+posterior_rho_jeffreys <- function(r, n, rho_grid, kappa, max_iter) {
+  result <- bf_rho_jeffreys(r, n, kappa, max_iter) *
     likelihood_rho_jeffreys(r, n, rho_grid) *
     prior_rho(rho_grid, kappa)
   return(result)
@@ -204,10 +153,12 @@ posterior_rho_jeffreys <- function(r, n, rho_grid, kappa) {
 #' @param r Numeric value. The observed sample correlation coefficient.
 #' @param n Numeric value. The sample size.
 #' @param kappa Numeric value. Prior concentration parameter.
+#' @param max_iter Integer. Maximum number of iterations (attempts) to solve
+#'        generalised hypergeometric functions.
 #'
 #' @return Numeric value representing the Bayes factor.
 #' @noRd
-bf_rho_exact <- function(r, n, kappa) {
+bf_rho_exact <- function(r, n, kappa, max_iter) {
 
   if (n <= 2) {
     return(1)
@@ -220,7 +171,8 @@ bf_rho_exact <- function(r, n, kappa) {
   hyper_term <- hypergeo::genhypergeo(
     U = c((n - 1) / 2, (n - 1) / 2),
     L = (n + 2 / kappa) / 2,
-    z = r^2
+    z = r^2,
+    maxiter = max_iter
   )
 
   log_result <- log(2^(1 - 2 / kappa)) +
@@ -241,10 +193,12 @@ bf_rho_exact <- function(r, n, kappa) {
 #' @param r Numeric value. The observed sample correlation coefficient.
 #' @param n Numeric value. The sample size.
 #' @param kappa Numeric value. Prior concentration parameter.
+#' @param max_iter Integer. Maximum number of iterations (attempts) to solve
+#'        generalised hypergeometric functions.
 #'
 #' @return Numeric value representing the Bayes factor.
 #' @noRd
-bf_rho_jeffreys <- function(r, n, kappa) {
+bf_rho_jeffreys <- function(r, n, kappa, max_iter) {
 
   if (n <= 2) {
     return(1)
@@ -257,7 +211,8 @@ bf_rho_jeffreys <- function(r, n, kappa) {
   hyper_term <- hypergeo::genhypergeo(
     U = c((2 * n - 3) / 4, (2 * n - 1) / 4),
     L = (n + 2 / kappa) / 2,
-    z = r^2
+    z = r^2,
+    maxiter = max_iter
   )
 
   log_term <- lgamma((n + 2 / kappa - 1) / 2) -
@@ -278,15 +233,18 @@ bf_rho_jeffreys <- function(r, n, kappa) {
 #' @param r Numeric value. The observed sample correlation coefficient.
 #' @param n Numeric value. The sample size.
 #' @param rho_grid Numeric vector. Grid of correlation values to evaluate.
+#' @param max_iter Integer. Maximum number of iterations (attempts) to solve
+#'        generalised hypergeometric functions.
 #'
 #' @return Numeric vector of likelihood values.
 #' @noRd
-likelihood_rho_exact <- function(r, n, rho_grid) {
+likelihood_rho_exact <- function(r, n, rho_grid, max_iter) {
 
   hyper_term_even <- hypergeo::genhypergeo(
     U = c((n - 1) / 2, (n - 1) / 2),
     L = 1 / 2,
-    z = (r * rho_grid)^2
+    z = (r * rho_grid)^2,
+    maxiter = max_iter
   )
 
   likelihood_rho_even <- (1 - rho_grid^2)^((n - 1) / 2) *
@@ -295,7 +253,8 @@ likelihood_rho_exact <- function(r, n, rho_grid) {
   hyper_term_odd <- hypergeo::genhypergeo(
     U = c(n / 2, n / 2),
     L = 3 / 2,
-    z = (r * rho_grid)^2
+    z = (r * rho_grid)^2,
+    maxiter = max_iter
   )
 
   log_term_odd <- 2 * (lgamma(n / 2) - lgamma((n - 1) / 2)) +
@@ -345,4 +304,96 @@ prior_rho <- function(rho_grid, kappa) {
       shape2 = 1 / kappa
     )
   return(result)
+}
+
+#' Create grid of correlation coefficient values
+#'
+#' @description
+#' Creates a grid of correlation coefficient values for numerical approximation,
+#' with higher density of points around the observed correlation coefficient
+#' and around the endpoints -1 and +1.
+#'
+#' @param r Numeric value. The observed sample correlation coefficient.
+#' @param n Numeric value. The sample size.
+#' @param n_bins Integer. Number of grid points desired.
+#'
+#' @return Numeric vector of correlation values between -1 and 1.
+#' @noRd
+create_rho_grid <- function(r, n, n_bins) {
+
+  unit_grid <- stats::qlogis(
+    p = seq(from = 0, to = 1, length.out = n_bins + 2)
+  )
+  unit_grid <- unit_grid[-c(1, length(unit_grid))]
+
+  result <- unique(sort(c(
+    -1,
+    seq(-0.999, -0.9, by = 0.01),
+    tanh(atanh(r) + unit_grid / sqrt(n)),
+    seq(0.9, 0.999, by = 0.01),
+    1
+  )))
+
+  return(result)
+
+}
+
+#' Validate inputs for posterior_rho_updf function
+#'
+#' @param r Numeric value. The observed sample correlation coefficient.
+#' @param n Numeric value. The sample size.
+#' @param kappa Numeric value. Parameter controlling the concentration of the
+#'        prior.
+#' @param n_bins Integer. Number of grid points for the approximation.
+#' @param max_iter Integer. Maximum number of iterations (attempts) to solve
+#'        generalised hypergeometric functions.
+#'
+#' @return NULL invisibly if validation passes, otherwise aborts with an error
+#'         message.
+#' @noRd
+validate_posterior_rho_updf_input <- function(r, n, kappa, n_bins, max_iter) {
+
+  input_abort <- function(param, conditions) {
+    rlang::abort(
+      message = paste0(
+        "Input '", param, "' must be a single finite value ", conditions, "."
+      )
+    )
+  }
+
+  if (length(r) != 1 || !is.numeric(r) || !is.finite(r) || abs(r) > 1) {
+    input_abort(param = "r", conditions = "between -1 and 1 (inclusive)")
+  }
+  if (length(n) != 1 || !is.numeric(n) || !is.finite(n) || n < 3) {
+    input_abort(param = "n", conditions = "greater than or equal to 3")
+  }
+  if (
+    length(kappa) != 1 || !is.numeric(kappa) || !is.finite(kappa) || kappa <= 0
+  ) {
+    input_abort(param = "kappa", conditions = "that is strictly positive")
+  }
+  if (
+    length(n_bins) != 1 || !is.numeric(n_bins) || !is.finite(n_bins) ||
+    n_bins < 10
+  ) {
+    input_abort(param = "n_bins", conditions = "greater than or equal to 10")
+  }
+  if (
+    length(max_iter) != 1 || !is.numeric(max_iter) || !is.finite(max_iter) ||
+    max_iter < 100
+  ) {
+    input_abort(param = "max_iter", conditions = "greater than or equal to 100")
+  }
+
+  return(invisible(x = NULL))
+
+}
+
+#' @noRd
+input_warn_rounded <- function(param) {
+  rlang::warn(
+    message = paste0(
+      "Input '", param, "' has been rounded to the nearest integer."
+    )
+  )
 }
