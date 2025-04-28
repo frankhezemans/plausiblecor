@@ -1,6 +1,6 @@
 Package: plausiblecor
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Bayesian Post-Hoc Correlation Analysis with Plausible Values
 Version: 0.1.0
 Authors@R: c(
     person(
@@ -28,8 +28,13 @@ Authors@R: c(
       comment = c(ORCID = "0000-0003-3925-3833")
     )
   )
-Description: More about what it does (maybe more than one line).
-    Continuation lines should be indented.
+Description: Analyse correlations between observed variables and posterior
+    distributions of latent variables (estimated hierarchically or separately
+    for each subject). Uses a "plausible values" approach based on posterior
+    draws to properly account for uncertainty, enabling inference on the
+    correlation coefficient at both the sample and population level without
+    re-fitting the latent variable model. Includes tools for calculating,
+    summarising, visualising, and comparing plausible correlations.
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
