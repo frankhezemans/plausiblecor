@@ -85,9 +85,9 @@ posterior_rho_updf <- function(
   rho_grid <- create_rho_grid(r, n, n_bins)
 
   if (abs(r) < sqrt(.Machine$double.eps)) {
-    d <- posterior_rho_jeffreys(r, n, rho_grid, kappa)
+    d <- posterior_rho_jeffreys(r, n, rho_grid, kappa, max_iter)
   } else {
-    d <- posterior_rho_exact(r, n, rho_grid, kappa)
+    d <- posterior_rho_exact(r, n, rho_grid, kappa, max_iter)
   }
 
   if (all(!is.finite(d))) {
