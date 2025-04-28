@@ -5,7 +5,7 @@
 \title{Calculate Unnormalised Posterior Density for Pearson's Correlation
 Coefficient}
 \usage{
-posterior_rho_updf(r, n, kappa = 1, n_bins = 1000, ...)
+posterior_rho_updf(r, n, kappa = 1, n_bins = 1000, max_iter = 1e+07, ...)
 }
 \arguments{
 \item{r}{Numeric value. The observed sample correlation coefficient, must be
@@ -20,6 +20,10 @@ below). Default is `1`, resulting in a uniform prior.}
 \item{n_bins}{Integer. Number of grid points for the approximation, default
 is `1000`.}
 
+\item{max_iter}{Integer. Maximum number of iterations (attempts) to solve
+generalised hypergeometric functions that are necessary to compute
+the posterior density. Default is `1e7`. See details.}
+
 \item{...}{Additional arguments passed to [stats::approxfun()].}
 }
 \value{
@@ -33,17 +37,31 @@ It returns an approximation function that can be evaluated at any correlation
 value between -1 and 1.
 }
 \details{
-The function implements the analytical posterior for Pearson's correlation
-coefficient as described in Ly et al. (2018). For r = 0, Jeffreys'
-approxmation is used; otherwise the exact solution given by Ly et al. (2018)
-is used.
+The unnormalised probability density of the posterior distribution of the
+correlation coefficient is computed for a discretised grid of values. Then,
+linear interpolation between these density values is used to construct an
+approximation to the unnormalised probability density *function* of the
+posterior, using [stats::approxfun()].
 
-The prior on the correlation coefficient is a so-called stretched beta
-distribution, which is a beta distribution with its shape parameters alpha
-and beta set to alpha = beta = 1/kappa, and its minimum and maximum
-stretched to -1 and 1, respectively. This creates a symmetric distribution
-centered at zero and its domain stretched to cover the full range of the
-correlation coefficient.
+The discrete grid of correlation values is set adaptively, so that there are
+many estimates of the density near the posterior mode (i.e., the observed
+correlation) and near the endpoints of +1 and -1.
+
+Computing the posterior density involves several evaluations of the
+generalised hypergeometric function, which is handled internally by
+[hypergeo::genhypergeo()]. In some cases, especially when the observed
+correlation approaches +1 or -1, [hypergeo::genhypergeo()] may need several
+thousand attempts to find the solution. Here, we cautiously set the default
+`max_iter` to `1e7`, but note that the original default in
+[hypergeo::genhypergeo()] is much lower (`2e3`).
+
+Any undefined or non-finite estimate of the posterior density is treated as
+`NA` and ignored by [stats::approxfun()] when constructing the function.
+
+The prior is a stretched beta distribution with shape parameters alpha =
+beta = 1/kappa, scaled to the interval [-1, 1]. This creates a symmetric
+distribution centered at zero and its domain stretched to cover the full
+range of the correlation coefficient.
 
 This function was adapted from code previously released with the Dynamic
 Models of Choice toolbox (Heathcote et al., 2019).
