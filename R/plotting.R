@@ -19,6 +19,9 @@
 #' @param alpha Alpha transparency level for intervals/dots. Default is `0.75`.
 #' @param zero_refline Logical. If `TRUE` (default), adds a vertical dashed line
 #'        at 0 to help reference null correlations.
+#' @param zero_refline_linetype,zero_refline_linewidth,zero_refline_colour
+#'        Characters used to control the appearance of the reference line at
+#'        zero (if applicable).
 #' @param point_method Character, `"mean"` (default) or `"median"`, indicating
 #'        how to summarize the sample draws.
 #' @param interval_width Numeric vector giving widths of uncertainty intervals
@@ -56,6 +59,9 @@ plot_sample_cor <- function(
     fill = "#7F7F7F",
     alpha = 0.75,
     zero_refline = TRUE,
+    zero_refline_linetype = "dashed",
+    zero_refline_linewidth = 1.25,
+    zero_refline_colour = "black",
     point_method = c("mean", "median"),
     interval_width = c(0.5, 0.8, 0.95),
     interval_method = c("hdci", "qi"),
@@ -77,7 +83,7 @@ plot_sample_cor <- function(
   )
 
   plot_data <- .data %>%
-    dplyr::distinct(
+    dplyr::select(
       dplyr::all_of(c(".draw", "r"))
     ) %>%
     draw_rows(
@@ -96,9 +102,9 @@ plot_sample_cor <- function(
     base_plot <- base_plot +
       ggplot2::geom_vline(
         xintercept = 0,
-        linetype = "dashed",
-        linewidth = 1.25,
-        colour = "black"
+        linetype = zero_refline_linetype,
+        linewidth = zero_refline_linewidth,
+        colour = zero_refline_colour
       )
   }
 
@@ -108,15 +114,6 @@ plot_sample_cor <- function(
       ggdist::stat_dotsinterval(
         point_interval = paste0(point_method, "_", interval_method),
         .width = interval_width,
-        interval_size_range = c(1, 3),
-        shape = 21,
-        stroke = 1.75,
-        point_size = 5,
-        point_fill = "white",
-        point_colour = "black",
-        point_alpha = 1,
-        interval_colour = "black",
-        interval_alpha = 1,
         binwidth = binwidth,
         overflow = "compress",
         alpha = alpha,
@@ -131,15 +128,6 @@ plot_sample_cor <- function(
       ggdist::stat_histinterval(
         point_interval = paste0(point_method, "_", interval_method),
         .width = interval_width,
-        interval_size_range = c(1, 3),
-        shape = 21,
-        stroke = 1.75,
-        point_size = 5,
-        point_fill = "white",
-        point_colour = "black",
-        point_alpha = 1,
-        interval_colour = "black",
-        interval_alpha = 1,
         breaks = breaks,
         alpha = alpha,
         colour = colour,
@@ -197,6 +185,9 @@ plot_sample_cor <- function(
 #' @param mean_linewidth Line width for the mean density trace. Defaults to `3`.
 #' @param zero_refline Logical. If `TRUE` (default), adds a vertical dashed line
 #'        at 0 to help reference null correlations.
+#' @param zero_refline_linetype,zero_refline_linewidth,zero_refline_colour
+#'        Characters used to control the appearance of the reference line at
+#'        zero (if applicable).
 #' @param x_title Label for the x-axis. Defaults to [`ggplot2::waiver()`waiver]
 #'   (no label).
 #' @param x_axis_limits Optional numeric vector of length 2 to control x-axis
@@ -230,8 +221,11 @@ plot_population_cor <- function(
     trace_linewidth = 0.1,
     mean_colour = "#377EB8",
     mean_alpha = 1,
-    mean_linewidth = 3,
+    mean_linewidth = 1.25,
     zero_refline = TRUE,
+    zero_refline_linetype = "dashed",
+    zero_refline_linewidth = 1.25,
+    zero_refline_colour = "black",
     x_title = ggplot2::waiver(),
     x_axis_limits = NULL,
     plot_text_scaling = 1,
@@ -274,9 +268,9 @@ plot_population_cor <- function(
     base_plot <- base_plot +
       ggplot2::geom_vline(
         xintercept = 0,
-        linetype = "dashed",
-        linewidth = 1.25,
-        colour = "black"
+        linetype = zero_refline_linetype,
+        linewidth = zero_refline_linewidth,
+        colour = zero_refline_colour
       )
   }
 
@@ -345,10 +339,10 @@ draw_rows <- function(.data, n_draws, rng_seed) {
 #' @noRd
 add_theme_elements <- function(x, plot_text_scaling) {
   result <- x +
-    ggplot2::scale_x_continuous(
-      # https://doi.org/10.1016/j.paid.2016.06.069
-      breaks = c(-1, -0.5, -0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.5, 1),
-    ) +
+    # ggplot2::scale_x_continuous(
+    #   # https://doi.org/10.1016/j.paid.2016.06.069
+    #   breaks = c(-1, -0.5, -0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.5, 1),
+    # ) +
     ggplot2::theme_minimal() +
     ggplot2::theme(
       panel.grid.minor.y = ggplot2::element_blank(),
@@ -361,7 +355,7 @@ add_theme_elements <- function(x, plot_text_scaling) {
       axis.line.x = ggplot2::element_line(colour = "#CCCCCC", linewidth = 1),
       axis.ticks.x = ggplot2::element_line(colour = "#CCCCCC", linewidth = 1),
       axis.title.x = ggplot2::element_text(
-        size = 30 * plot_text_scaling, face = "bold.italic", vjust = -0.75
+        size = 30 * plot_text_scaling, vjust = -0.75
       ),
       axis.text.x = ggplot2::element_text(
         size = 18 * plot_text_scaling, colour = "black"

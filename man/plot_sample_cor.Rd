@@ -14,6 +14,9 @@ plot_sample_cor(
   fill = "#7F7F7F",
   alpha = 0.75,
   zero_refline = TRUE,
+  zero_refline_linetype = "dashed",
+  zero_refline_linewidth = 1.25,
+  zero_refline_colour = "black",
   point_method = c("mean", "median"),
   interval_width = c(0.5, 0.8, 0.95),
   interval_method = c("hdci", "qi"),
@@ -43,6 +46,9 @@ for a histogram.}
 
 \item{zero_refline}{Logical. If `TRUE` (default), adds a vertical dashed line
 at 0 to help reference null correlations.}
+
+\item{zero_refline_linetype, zero_refline_linewidth, zero_refline_colour}{Characters used to control the appearance of the reference line at
+zero (if applicable).}
 
 \item{point_method}{Character, `"mean"` (default) or `"median"`, indicating
 how to summarize the sample draws.}
