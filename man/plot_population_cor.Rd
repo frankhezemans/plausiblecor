@@ -12,7 +12,7 @@ plot_population_cor(
   trace_linewidth = 0.1,
   mean_colour = "#377EB8",
   mean_alpha = 1,
-  mean_linewidth = 3,
+  mean_linewidth = 1.25,
   zero_refline = TRUE,
   zero_refline_linetype = "dashed",
   zero_refline_linewidth = 1.25,
