@@ -28,6 +28,9 @@
 #' @param kappa Numeric value controlling the "concentration" of the stretched
 #'        beta prior on the correlation coefficient. Default is `1`, resulting
 #'        in a uniform prior. See [posterior_rho_updf()] for details.
+#' @param max_iter Integer denoting the maximum number of iterations (attempts)
+#'        to obtain a posterior density function for a given MCMC sample.
+#'        Default is `1e7`; see [posterior_rho_updf()] for details.
 #' @param ... Additional arguments passed to [posterior_rho_updf()].
 #'
 #' @return A [tibble::tbl_df-class] with one row per MCMC sample containing:
@@ -81,6 +84,7 @@ run_plausible_cor <- function(
     covariate,
     cor_use = "complete.obs",
     kappa = 1,
+    max_iter = 1e7,
     ...
 ) {
 
@@ -169,6 +173,7 @@ run_plausible_cor <- function(
           r = .data[["r"]],
           n = .data[["n"]],
           kappa = kappa,
+          max_iter = max_iter,
           ...
         )
       )

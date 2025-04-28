@@ -66,4 +66,18 @@ value(s) from the posterior distribution of each Pearson correlation (as
 defined by `posterior_updf`) and computes the difference. This allows for
 comparison at the population level rather than the specific sample of
 subjects.
+
+This function was adapted from code previously released with the Dynamic
+Models of Choice toolbox (Heathcote et al., 2019).
+}
+\references{
+Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,
+& Matzke, D. (2017). A flexible and efficient hierarchical bayesian approach
+to the exploration of individual differences in cognitive‐model‐based
+neuroscience. *Computational models of brain and behavior*, 467-479.
+https://doi.org/10.1002/9781119159193.ch34
+
+Heathcote, A., Lin, Y.S., Reynolds, A., Strickland, L., Gretton, M., &
+Matzke, D. (2019). Dynamic models of choice. *Behavior Research Methods*,
+51, 961-985. https://doi.org/10.3758/s13428-018-1067-y
 }
