@@ -22,16 +22,22 @@
 #' @param parameter String denoting the column with the estimated model
 #'        parameter.
 #' @param covariate String denoting the column with the observed covariate.
-#' @param cor_use String indicating how to handle missing values in the
-#'        Pearson correlation analysis, passed to the `use` argument of
-#'        [stats::cor()]. Default is `"complete.obs"`.
-#' @param kappa Numeric value controlling the "concentration" of the stretched
-#'        beta prior on the correlation coefficient. Default is `1`, resulting
-#'        in a uniform prior. See [posterior_rho_updf()] for details.
-#' @param max_iter Integer denoting the maximum number of iterations (attempts)
-#'        to obtain a posterior density function for a given MCMC sample.
-#'        Default is `1e7`; see [posterior_rho_updf()] for details.
-#' @param ... Additional arguments passed to [posterior_rho_updf()].
+#' @param cor_method String indicating the method for computing the sample
+#'        correlation coefficient. Currently ignored (fixed to "pearson").
+#' @param posterior_args Named list of arguments passed to
+#'        [posterior_rho_updf()], which controls how the unnormalised posterior
+#'        density function is computed for each Pearson correlation coefficient.
+#'        The following arguments can be included:
+#'        * `kappa` Numeric value controlling the "concentration" of the
+#'        stretched beta prior on the correlation coefficient. Default is `1`,
+#'        resulting in a uniform prior.
+#'        * `n_bins` Integer denoting the number of bins ("resolution") used
+#'        for the discretised grid of correlation values, for which the
+#'        unnormalised posterior density values are computed. Default is `1e3`.
+#'        * `max_iter` Integer denoting the maximum number of iterations
+#'        (attempts) to obtain a posterior density function for a given MCMC
+#'        sample. Default is `1e7`.
+#'        * `...` additional arguments passed forward to [stats::approxfun()].
 #'
 #' @return A [tibble::tbl_df-class] with one row per MCMC sample containing:
 #'   \item{.draw}{The MCMC sample ID}
@@ -82,74 +88,51 @@ run_plausible_cor <- function(
     subject_id,
     parameter,
     covariate,
-    cor_use = "complete.obs",
-    kappa = 1,
-    max_iter = 1e7,
-    ...
+    cor_method = "pearson",
+    posterior_args = NULL
 ) {
 
-  validate_column_inputs(
-    col_names = c(
-      draw_id = draw_id,
-      subject_id = subject_id,
-      parameter = parameter,
-      covariate = covariate
-    )
-  )
-
-  validate_column_inputs(
-    col_names = c(draw_id, subject_id, parameter),
-    data_frame = mcmc_data,
-    data_name = "mcmc_data"
-  )
-
-  if (covariate %in% names(mcmc_data)) {
-
-    data <- mcmc_data
-
-  } else if (!is.null(covariate_data)) {
-
-    validate_column_inputs(
-      col_names = c(subject_id, covariate),
-      data_frame = covariate_data,
-      data_name = "covariate_data"
-    )
-
-    covariate_data_clean <- covariate_data %>%
-      dplyr::select(dplyr::all_of(c(subject_id, covariate))) %>%
-      dplyr::distinct()
-
-    n_subs <- length(unique(covariate_data_clean[[subject_id]]))
-    if (nrow(covariate_data_clean) != n_subs) {
-      rlang::abort(
-        message = "Covariate data should have one unique value per subject."
-      )
-    }
-
-    data <- dplyr::left_join(
-      x = mcmc_data,
-      y = covariate_data_clean,
-      by = subject_id
-    )
-
-  } else {
-    rlang::abort(
-      message = paste0(
-        "Covariate column not found in 'mcmc_data', ",
-        "and no 'covariate_data' provided."
-      )
-    )
+  if (cor_method != "pearson") {
+    rlang::abort(message = "'cor_method' must be 'pearson'")
   }
 
+  data <- prep_plausible_cor_data(
+    mcmc_data = mcmc_data,
+    covariate_data = covariate_data,
+    draw_id = draw_id,
+    subject_id = subject_id,
+    parameter = parameter,
+    covariate = covariate
+  )
+
+  posterior_args <- validate_posterior_args(posterior_args)
+
+  result <- run_plausible_cor_pearson(
+    data = data,
+    parameter = parameter,
+    covariate = covariate,
+    posterior_args = posterior_args
+  )
+
+  return(result)
+
+}
+
+#' @noRd
+run_plausible_cor_pearson <- function(
+    data,
+    parameter,
+    covariate,
+    posterior_args
+) {
+
   result <- data %>%
-    dplyr::rename(dplyr::all_of(c(.draw = draw_id))) %>%
-    dplyr::arrange(.data[[".draw"]]) %>%
     dplyr::group_by(.data[[".draw"]]) %>%
     dplyr::summarise(
       r = stats::cor(
         x = .data[[parameter]],
         y = .data[[covariate]],
-        use = cor_use,
+        use = "everything",
         method = "pearson"
       ),
       n = sum(!is.na(.data[[parameter]]) & !is.na(.data[[covariate]])),
@@ -160,25 +143,24 @@ run_plausible_cor <- function(
     )
 
   if (nrow(result) == 0) {
-    rlang::abort(
-      message = "No MCMC samples with valid correlation values."
-    )
+    rlang::abort(message = "No MCMC samples with valid correlation values.")
   }
 
   result <- result %>%
-    dplyr::rowwise() %>%
     dplyr::mutate(
-      posterior_updf = list(
-        posterior_rho_updf(
-          r = .data[["r"]],
-          n = .data[["n"]],
-          kappa = kappa,
-          max_iter = max_iter,
-          ...
-        )
+      posterior_updf = purrr::map2(
+        .x = .data[["r"]],
+        .y = .data[["n"]],
+        .f = function(r_val, n_val) {
+          rlang::exec(
+            .fn = posterior_rho_updf,
+            r = r_val,
+            n = n_val,
+            !!!posterior_args
+          )
+        }
       )
-    ) %>%
-    dplyr::ungroup()
+    )
 
   return(result)
 
@@ -402,22 +384,20 @@ compare_plausible_cors <- function(
     dplyr::mutate(type = "sample") %>%
     dplyr::relocate(dplyr::all_of("type"))
 
-  posterior_draws <- Map(
-    f = function(data, seed, n = n_samples) {
+  population_delta_summary <- purrr::map2(
+    .x = list(x = x, y = y),
+    .y = stats::setNames(object = rng_seed, nm = c("x", "y")),
+    .f = function(data, seed, n = n_samples) {
       get_sampled_quantiles(
         .data = data,
         n_samples = n,
         starter_seed = seed
       )
-    },
-    data = list(x = x, y = y),
-    seed = stats::setNames(object = rng_seed, nm = c("x", "y"))
-  )
-
-  population_delta_summary <- dplyr::bind_rows(
-    posterior_draws,
-    .id = "dataset"
+    }
   ) %>%
+    dplyr::bind_rows(
+      .id = "dataset"
+    ) %>%
     dplyr::select(
       dplyr::all_of(c("dataset", ".draw", "quantile"))
     ) %>%
@@ -493,14 +473,17 @@ get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
     return(result)
   }
 
-  posterior_rho_densities_list <- Map(
-    f = single_density_grid,
-    draw_id = .data[[".draw"]],
-    r_val = .data[["r"]],
-    updf = .data[["posterior_updf"]]
-  )
-
-  result <- dplyr::bind_rows(posterior_rho_densities_list)
+  result <- purrr::pmap(
+    .l = .data,
+    .f = function(.draw, r, posterior_updf, ...) {
+      single_density_grid(
+        draw_id = .draw,
+        r_val = r,
+        updf = posterior_updf
+      )
+    }
+  ) %>%
+    dplyr::bind_rows()
 
   return(result)
 
@@ -639,31 +622,40 @@ get_interval <- function(
   dx <- diff(val)[1]
   cdf <- cumsum(dens) * dx
 
-  intervals <- lapply(
-    X = width,
-    FUN = function(w) {
-      if (method == "qi") {
-        qi_approx <- stats::approx(
-          x = cdf,
-          y = val,
-          xout = c((1 - w) / 2, (1 + w) / 2),
-          ties = "ordered"
-        )
-        out <- qi_approx[["y"]]
-      } else {
-        df <- data.frame(val = val, dens = dens)
-        df <- df[order(-df$dens), ]
-        df$cum_dens <- cumsum(df$dens * dx)
-        included_vals <- df$cum_dens <= w
-        out <- range(df$val[included_vals])
-      }
-      out <- c(out, w)
-      names(out) <- c("lower", "upper", "width")
-      return(out)
+  compute_interval <- function(
+    w,
+    val = val,
+    dens = dens,
+    method = method,
+    dx = dx,
+    cdf = cdf
+  ) {
+    if (method == "qi") {
+      qi_approx <- stats::approx(
+        x = cdf,
+        y = val,
+        xout = c((1 - w) / 2, (1 + w) / 2),
+        ties = "ordered"
+      )
+      out <- qi_approx[["y"]]
+    } else {
+      df <- data.frame(val = val, dens = dens)
+      df <- df[order(-df$dens), ]
+      df$cum_dens <- cumsum(df$dens * dx)
+      included_vals <- df$cum_dens <= w
+      out <- range(df$val[included_vals])
     }
-  )
+    out <- c(out, w)
+    names(out) <- c("lower", "upper", "width")
+    return(out)
+  }
 
-  result <- dplyr::bind_rows(intervals)
+  result <- purrr::map(
+    .x = width,
+    .f = compute_interval
+  ) %>%
+    dplyr::bind_rows()
+
   return(result)
 
 }
@@ -857,12 +849,11 @@ validate_column_inputs <- function(
     data_frame = NULL,
     data_name = NULL
 ) {
-  invalid_cols <- vapply(
-    X = col_names,
-    FUN = function(col_name) {
+  invalid_cols <- purrr::map_lgl(
+    .x = col_names,
+    .f = function(col_name) {
       length(col_name) != 1 || !is.character(col_name)
-    },
-    FUN.VALUE = logical(1)
+    }
   )
   if (any(invalid_cols)) {
     bad_names <- names(col_names)[invalid_cols]
@@ -890,5 +881,143 @@ validate_column_inputs <- function(
   }
 
   return(invisible(x = NULL))
+
+}
+
+
+#' Validate posterior_args parameter
+#'
+#' @description
+#' Internal helper function to validate the structure and contents of the
+#' posterior_args parameter passed to functions that use [posterior_rho_updf()].
+#' Allowed arguments are: kappa, n_bins, max_iter, and [stats::approxfun()]
+#' arguments (method, yleft, yright, rule, f, ties).
+#'
+#' @param posterior_args A named list of arguments or NULL
+#'
+#' @return The validated (and potentially cleaned) posterior_args list
+#'
+#' @noRd
+validate_posterior_args <- function(posterior_args) {
+
+  if (is.null(posterior_args)) {
+    return(NULL)
+  }
+  if (!is.list(posterior_args)) {
+    rlang::abort(message = "'posterior_args' must be a list or NULL")
+  }
+  if (is.null(names(posterior_args)) && length(posterior_args) > 0) {
+    rlang::abort(message = "'posterior_args' must be a named list")
+  }
+
+  arg_names <- names(posterior_args)
+  allowed_args <- c(
+    # posterior_rho_updf args
+    "kappa", "n_bins", "max_iter",
+    # stats::approxfun args
+    "method", "yleft", "yright", "rule", "f", "ties"
+  )
+  disallowed_args <- setdiff(arg_names, allowed_args)
+  if ("na.rm" %in% arg_names) {
+    rlang::warn(message = "'na.rm' argument is ignored; forced to be TRUE")
+    disallowed_args <- setdiff(disallowed_args, "na.rm")
+  }
+  if (length(disallowed_args) > 0) {
+    rlang::warn(
+      message = paste0(
+        "Removing unknown argument(s) from 'posterior_args': ",
+        paste(disallowed_args, collapse = ", "),
+        ".\nAllowed arguments are: ", paste(allowed_args, collapse = ", ")
+      )
+    )
+    for (arg in disallowed_args) {
+      posterior_args[[arg]] <- NULL
+    }
+    arg_names <- names(posterior_args)
+  }
+
+  return(posterior_args)
+
+}
+
+#' @noRd
+prep_plausible_cor_data <- function(
+    mcmc_data,
+    covariate_data,
+    draw_id,
+    subject_id,
+    parameter,
+    covariate
+) {
+
+  validate_column_inputs(
+    col_names = c(
+      draw_id = draw_id,
+      subject_id = subject_id,
+      parameter = parameter,
+      covariate = covariate
+    )
+  )
+
+  validate_column_inputs(
+    col_names = c(draw_id, subject_id, parameter),
+    data_frame = mcmc_data,
+    data_name = "mcmc_data"
+  )
+
+  if (covariate %in% names(mcmc_data)) {
+
+    data <- mcmc_data
+
+  } else if (!is.null(covariate_data)) {
+
+    validate_column_inputs(
+      col_names = c(subject_id, covariate),
+      data_frame = covariate_data,
+      data_name = "covariate_data"
+    )
+
+    covariate_data_clean <- covariate_data %>%
+      dplyr::select(dplyr::all_of(c(subject_id, covariate))) %>%
+      dplyr::distinct()
+
+    n_subs <- length(unique(covariate_data_clean[[subject_id]]))
+    if (nrow(covariate_data_clean) != n_subs) {
+      rlang::abort(
+        message = "Covariate data should have one unique value per subject."
+      )
+    }
+
+    data <- dplyr::left_join(
+      x = mcmc_data,
+      y = covariate_data_clean,
+      by = subject_id
+    )
+
+  } else {
+    rlang::abort(
+      message = paste0(
+        "Covariate column not found in 'mcmc_data', ",
+        "and no 'covariate_data' provided."
+      )
+    )
+  }
+
+  data <- data %>%
+    dplyr::rename(dplyr::all_of(c(.draw = draw_id))) %>%
+    dplyr::select(dplyr::all_of(c(".draw", parameter, covariate)))
+
+  if (anyNA(data)) {
+    rlang::warn(message = paste0(
+      "Removing any rows with missing values in ",
+      paste(draw_id, parameter, covariate, collapse = ", ")
+    ))
+    data <- tidyr::drop_na(data)
+  }
+
+  data <- data %>%
+    dplyr::arrange(.data[[".draw"]])
+
+  return(data)
 
 }

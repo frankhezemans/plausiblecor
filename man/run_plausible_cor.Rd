@@ -11,10 +11,8 @@ run_plausible_cor(
   subject_id,
   parameter,
   covariate,
-  cor_use = "complete.obs",
-  kappa = 1,
-  max_iter = 1e+07,
-  ...
+  cor_method = "pearson",
+  posterior_args = NULL
 )
 }
 \arguments{
@@ -34,19 +32,23 @@ parameter.}
 
 \item{covariate}{String denoting the column with the observed covariate.}
 
-\item{cor_use}{String indicating how to handle missing values in the
-Pearson correlation analysis, passed to the `use` argument of
-[stats::cor()]. Default is `"complete.obs"`.}
+\item{cor_method}{String indicating the method for computing the sample
+correlation coefficient. Currently ignored (fixed to "pearson").}
 
-\item{kappa}{Numeric value controlling the "concentration" of the stretched
-beta prior on the correlation coefficient. Default is `1`, resulting
-in a uniform prior. See [posterior_rho_updf()] for details.}
-
-\item{max_iter}{Integer denoting the maximum number of iterations (attempts)
-to obtain a posterior density function for a given MCMC sample.
-Default is `1e7`; see [posterior_rho_updf()] for details.}
-
-\item{...}{Additional arguments passed to [posterior_rho_updf()].}
+\item{posterior_args}{Named list of arguments passed to
+[posterior_rho_updf()], which controls how the unnormalised posterior
+density function is computed for each Pearson correlation coefficient.
+The following arguments can be included:
+* `kappa` Numeric value controlling the "concentration" of the
+stretched beta prior on the correlation coefficient. Default is `1`,
+resulting in a uniform prior.
+* `n_bins` Integer denoting the number of bins ("resolution") used
+for the discretised grid of correlation values, for which the
+unnormalised posterior density values are computed. Default is `1e3`.
+* `max_iter` Integer denoting the maximum number of iterations
+(attempts) to obtain a posterior density function for a given MCMC
+sample. Default is `1e7`.
+* `...` additional arguments passed forward to [stats::approxfun()].}
 }
 \value{
 A [tibble::tbl_df-class] with one row per MCMC sample containing:

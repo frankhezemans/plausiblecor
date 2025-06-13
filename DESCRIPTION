@@ -46,6 +46,7 @@ Imports:
     ggplot2,
     hypergeo,
     magrittr,
+    purrr,
     rlang,
     stats,
     tibble,
