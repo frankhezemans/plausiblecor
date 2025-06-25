@@ -358,7 +358,7 @@ compare_plausible_cors <- function(
   point_method <- rlang::arg_match(arg = point_method)
   interval_method <- rlang::arg_match(arg = interval_method)
 
-  sample_joined_data <- dplyr::inner_join(
+  sample_delta_summary <- dplyr::inner_join(
     x = dplyr::select(
       .data = x,
       dplyr::all_of(c(".draw", "r"))
@@ -369,9 +369,7 @@ compare_plausible_cors <- function(
     ),
     by = ".draw",
     suffix = c("_x", "_y")
-  )
-
-  sample_delta_summary <- sample_joined_data %>%
+  ) %>%
     dplyr::mutate(
       delta = .data[["r_x"]] - .data[["r_y"]],
       .keep = "none"
@@ -454,6 +452,7 @@ get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
     data_name = ".data"
   )
 
+  # TODO -1 and 1 will return NA!
   rho_grid <- seq(from = -1, to = 1, by = grid_spacing)
 
   single_density_grid <- function(
@@ -463,6 +462,10 @@ get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
       return(NULL)
     }
     dens <- updf(grid)
+    if (all(!is.finite(dens))) {
+      return(NULL)
+    }
+    # TODO check for non-finite values
     dens_norm <- dens / sum(dens * dx)
     result <- tibble::tibble(
       .draw = draw_id,
@@ -904,7 +907,7 @@ validate_posterior_args <- function(posterior_args) {
     return(NULL)
   }
   if (!is.list(posterior_args)) {
-    rlang::abort(message = "'posterior_args' must be a list or NULL")
+    rlang::abort(message = "'posterior_args' must be a named list or NULL")
   }
   if (is.null(names(posterior_args)) && length(posterior_args) > 0) {
     rlang::abort(message = "'posterior_args' must be a named list")
@@ -920,6 +923,7 @@ validate_posterior_args <- function(posterior_args) {
   disallowed_args <- setdiff(arg_names, allowed_args)
   if ("na.rm" %in% arg_names) {
     rlang::warn(message = "'na.rm' argument is ignored; forced to be TRUE")
+    posterior_args[["na.rm"]] <- NULL
     disallowed_args <- setdiff(disallowed_args, "na.rm")
   }
   if (length(disallowed_args) > 0) {
