@@ -67,19 +67,25 @@ posterior_rho_updf <- function(
     r, n, kappa = 1, n_bins = 1e3, max_iter = 1e7, ...
 ) {
 
-  validate_posterior_rho_updf_input(r, n, kappa, n_bins, max_iter)
+  params <- validate_posterior_rho_updf_input(r, n, kappa, n_bins, max_iter)
+  r <- params[["r"]]
+  n <- params[["n"]]
+  kappa <- params[["kappa"]]
+  n_bins <- params[["n_bins"]]
+  max_iter <- params[["max_iter"]]
 
-  if (n != round(n)) {
-    input_warn_rounded(param = "n")
-    n <- round(n)
-  }
-  if (n_bins != round(n_bins)) {
-    input_warn_rounded(param = "n_bins")
-    n_bins <- round(n_bins)
-  }
-  if (max_iter != round(max_iter)) {
-    input_warn_rounded(param = "max_iter")
-    max_iter <- round(max_iter)
+  null_approxfun <- function(x) rep(NA_real_, length(x))
+
+  if (abs(r) == 1) {
+    rlang::warn(
+      message = paste0(
+        "Perfect correlation (|r| = 1) detected. ",
+        "Returning degenerate function that always returns NA."
+      ),
+      .frequency = "once",
+      .frequency_id = "perfect_correlation"
+    )
+    return(null_approxfun)
   }
 
   rho_grid <- create_rho_grid(r, n, n_bins)
@@ -90,17 +96,23 @@ posterior_rho_updf <- function(
     d <- posterior_rho_exact(r, n, rho_grid, kappa, max_iter)
   }
 
-  if (all(!is.finite(d))) {
-    rlang::abort(message = "Computation of posterior density failed.")
-  }
   if (any(!is.finite(d))) {
+    if (all(!is.finite(d))) {
+      rlang::warn(
+        message = paste0(
+          "Computation of posterior density failed. ",
+          "Returning degenerate function that always returns NA."
+        )
+      )
+      return(null_approxfun)
+    }
+    d[!is.finite(d)] <- NA_real_
     rlang::warn(
       message = paste0(
         "Some posterior densities were non-finite; will be ignored for ",
         "constructing the UPDF."
       )
     )
-    d[!is.finite(d)] <- NA_real_
   }
 
   result <- stats::approxfun(x = rho_grid, y = d, na.rm = TRUE, ...)
@@ -160,14 +172,6 @@ posterior_rho_jeffreys <- function(r, n, rho_grid, kappa, max_iter) {
 #' @noRd
 bf_rho_exact <- function(r, n, kappa, max_iter) {
 
-  if (n <= 2) {
-    return(1)
-  }
-
-  if (kappa >= 1 && abs(r) >= 1) {
-    return(Inf)
-  }
-
   hyper_term <- hypergeo::genhypergeo(
     U = c((n - 1) / 2, (n - 1) / 2),
     L = (n + 2 / kappa) / 2,
@@ -199,14 +203,6 @@ bf_rho_exact <- function(r, n, kappa, max_iter) {
 #' @return Numeric value representing the Bayes factor.
 #' @noRd
 bf_rho_jeffreys <- function(r, n, kappa, max_iter) {
-
-  if (n <= 2) {
-    return(1)
-  }
-
-  if (abs(r) >= 1) {
-    return(Inf)
-  }
 
   hyper_term <- hypergeo::genhypergeo(
     U = c((2 * n - 3) / 4, (2 * n - 1) / 4),
@@ -309,30 +305,102 @@ prior_rho <- function(rho_grid, kappa) {
 #' Create grid of correlation coefficient values
 #'
 #' @description
-#' Creates a grid of correlation coefficient values for numerical approximation,
-#' with higher density of points around the observed correlation coefficient
-#' and around the endpoints -1 and +1.
+#' Creates a grid of correlation coefficient values for numerical approximation
+#' of posterior densities. The grid uses adaptive allocation to place points
+#' strategically across three regions: around the observed correlation, near the
+#' extreme values (-1 and 1), and a base coverage of the middle range.
 #'
 #' @param r Numeric value. The observed sample correlation coefficient.
-#' @param n Numeric value. The sample size.
-#' @param n_bins Integer. Number of grid points desired.
+#'   Must be between -1 and 1.
+#' @param n Numeric value. The sample size. Used to determine the spread of
+#'   points around the observed correlation via Fisher z-transformation.
+#' @param n_bins Integer. Total number of grid points desired. Will be allocated
+#'   proportionally: ~30% for extremes, ~40% around observed correlation,
+#'   remainder for base coverage. Minimum value of 10 is enforced.
 #'
-#' @return Numeric vector of correlation values between -1 and 1.
+#' @return Numeric vector of correlation values between -0.999 and 0.999,
+#'   sorted in ascending order. The function aims to return approximately
+#'   n_bins points, but the actual number may be somewhat fewer due to
+#'   de-duplication.
+#'
+#' @details
+#' The function uses Fisher's z-transformation to create normally distributed
+#' points around the observed correlation in z-space, then transforms back to
+#' correlation space. The spread in z-space is 1 standard error (1/sqrt(n)),
+#' providing conservative coverage of plausible correlation values.
+#'
+#' For extreme regions, the function uses the beta distribution to create
+#' higher point density near the actual boundaries (±1). The boundary
+#' locations adapt based on the observed correlation to provide better
+#' coverage on the relevant side.
+#'
 #' @noRd
 create_rho_grid <- function(r, n, n_bins) {
 
-  unit_grid <- stats::qlogis(
-    p = seq(from = 0, to = 1, length.out = n_bins + 2)
-  )
-  unit_grid <- unit_grid[-c(1, length(unit_grid))]
+  n_bins <- max(n_bins, 10)
 
-  result <- unique(sort(c(
-    -1,
-    seq(-0.999, -0.9, by = 0.01),
-    tanh(atanh(r) + unit_grid / sqrt(n)),
-    seq(0.9, 0.999, by = 0.01),
-    1
+  extreme_range <- 0.15 * (1 - abs(r))
+  if (r >= 0) {
+    lower_extreme <- -0.8 - extreme_range
+    upper_extreme <- 0.999
+  } else {
+    lower_extreme <- -0.999
+    upper_extreme <- 0.8 + extreme_range
+  }
+
+  n_extremes <- round(n_bins * 0.3)
+  n_lower_extreme <- ceiling(n_extremes / 2)
+  n_upper_extreme <- n_extremes - n_lower_extreme
+  n_peak <- round(n_bins * 0.4)
+  n_base <- n_bins - n_extremes - n_peak
+
+  peak_grid <- tanh(seq(
+    from = atanh(r) - 1 / sqrt(n),
+    to = atanh(r) + 1 / sqrt(n),
+    length.out = n_peak
+  ))
+  peak_grid <- pmax(-0.999, pmin(0.999, peak_grid))
+
+  base_start <- lower_extreme + 0.1
+  base_end <- upper_extreme - 0.1
+  if (base_end - base_start < 0.3) {
+    base_start <- -0.7
+    base_end <- 0.7
+  }
+  base_grid <- seq(
+    from = base_start,
+    to = base_end,
+    length.out = n_base
+  )
+
+  if (n_lower_extreme == 1) {
+    lower_extreme_grid <- (lower_extreme + base_start - 0.1) / 2
+  } else {
+    lower_props <- stats::pbeta(
+      q = seq(from = 0.05, to = 0.95, length.out = n_lower_extreme),
+      shape1 = 0.5,
+      shape2 = 2
+    )
+    lower_extreme_grid <- lower_extreme +
+      (base_start - 0.1 - lower_extreme) * lower_props
+  }
+
+  if (n_upper_extreme == 1) {
+    upper_extreme_grid <- (base_end + 0.1 + upper_extreme) / 2
+  } else {
+    upper_props <- stats::pbeta(
+      q = seq(from = 0.05, to = 0.95, length.out = n_upper_extreme),
+      shape1 = 2,
+      shape2 = 0.5
+    )
+    upper_extreme_grid <- (base_end + 0.1) +
+      (upper_extreme - base_end - 0.1) * upper_props
+  }
+
+  result <- sort(unique(c(
+    lower_extreme_grid, base_grid, peak_grid, upper_extreme_grid
   )))
+  result <- result[result >= -0.999 & result <= 0.999]
 
   return(result)
 
@@ -341,59 +409,80 @@ create_rho_grid <- function(r, n, n_bins) {
 #' Validate inputs for posterior_rho_updf function
 #'
 #' @param r Numeric value. The observed sample correlation coefficient.
-#' @param n Numeric value. The sample size.
+#' @param n Integer The sample size.
 #' @param kappa Numeric value. Parameter controlling the concentration of the
 #'        prior.
 #' @param n_bins Integer. Number of grid points for the approximation.
 #' @param max_iter Integer. Maximum number of iterations (attempts) to solve
 #'        generalised hypergeometric functions.
 #'
-#' @return NULL invisibly if validation passes, otherwise aborts with an error
-#'         message.
+#' @return Named list containing the validated inputs.
+#'
 #' @noRd
 validate_posterior_rho_updf_input <- function(r, n, kappa, n_bins, max_iter) {
 
-  input_abort <- function(param, conditions) {
-    rlang::abort(
-      message = paste0(
-        "Input '", param, "' must be a single finite value ", conditions, "."
-      )
-    )
-  }
-
-  if (length(r) != 1 || !is.numeric(r) || !is.finite(r) || abs(r) > 1) {
-    input_abort(param = "r", conditions = "between -1 and 1 (inclusive)")
-  }
-  if (length(n) != 1 || !is.numeric(n) || !is.finite(n) || n < 3) {
-    input_abort(param = "n", conditions = "greater than or equal to 3")
-  }
-  if (
-    length(kappa) != 1 || !is.numeric(kappa) || !is.finite(kappa) || kappa <= 0
-  ) {
-    input_abort(param = "kappa", conditions = "that is strictly positive")
-  }
-  if (
-    length(n_bins) != 1 || !is.numeric(n_bins) || !is.finite(n_bins) ||
-    n_bins < 10
-  ) {
-    input_abort(param = "n_bins", conditions = "greater than or equal to 10")
-  }
-  if (
-    length(max_iter) != 1 || !is.numeric(max_iter) || !is.finite(max_iter) ||
-    max_iter < 100
-  ) {
-    input_abort(param = "max_iter", conditions = "greater than or equal to 100")
-  }
-
-  return(invisible(x = NULL))
-
-}
-
-#' @noRd
-input_warn_rounded <- function(param) {
-  rlang::warn(
-    message = paste0(
-      "Input '", param, "' has been rounded to the nearest integer."
+  rules <- list(
+    r = list(
+      fun = function(x) abs(x) <= 1,
+      fail_msg = "between -1 and 1 (inclusive)",
+      round = FALSE
+    ),
+    n = list(
+      fun = function(x) x > 2,
+      fail_msg = "greater than 2",
+      round = TRUE
+    ),
+    kappa = list(
+      fun = function(x) x > 0,
+      fail_msg = "that is strictly positive",
+      round = FALSE
+    ),
+    n_bins = list(
+      fun = function(x) x >= 100,
+      fail_msg = "greater than or equal to 100",
+      round = TRUE
+    ),
+    max_iter = list(
+      fun = function(x) x >= 1,
+      fail_msg = "greater than or equal to 1",
+      round = TRUE
     )
   )
+
+  process_param <- function(value, name, rule_list = rules) {
+    rule <- rule_list[[name]]
+    if (is.null(rule)) {
+      return(value)
+    }
+    if (
+      length(value) != 1L || !is.numeric(value) || !is.finite(value) ||
+      !rule[["fun"]](value)
+    ) {
+      rlang::abort(
+        message = paste0(
+          "Input '", name, "' must be a single finite value ",
+          rule[["fail_msg"]], "."
+        )
+      )
+    }
+    if (rule[["round"]] && value != round(value)) {
+      value <- round(value)
+      rlang::warn(
+        message = paste0(
+          "Input '", name, "' has been rounded to the nearest integer."
+        )
+      )
+    }
+    return(value)
+  }
+
+  result <- purrr::imap(
+    .x = list(
+      r = r, n = n, kappa = kappa, n_bins = n_bins, max_iter = max_iter
+    ),
+    .f = process_param
+  )
+
+  return(result)
+
 }
