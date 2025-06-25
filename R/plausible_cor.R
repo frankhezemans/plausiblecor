@@ -452,8 +452,7 @@ get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
     data_name = ".data"
   )
 
-  # TODO -1 and 1 will return NA!
-  rho_grid <- seq(from = -1, to = 1, by = grid_spacing)
+  rho_grid <- seq(from = -0.999, to = 0.999, by = grid_spacing)
 
   single_density_grid <- function(
     draw_id, r_val, updf, grid = rho_grid, dx = grid_spacing
@@ -462,10 +461,9 @@ get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
       return(NULL)
     }
     dens <- updf(grid)
-    if (all(!is.finite(dens))) {
+    if (any(!is.finite(dens))) {
       return(NULL)
     }
-    # TODO check for non-finite values
     dens_norm <- dens / sum(dens * dx)
     result <- tibble::tibble(
       .draw = draw_id,
