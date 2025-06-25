@@ -306,101 +306,43 @@ prior_rho <- function(rho_grid, kappa) {
 #'
 #' @description
 #' Creates a grid of correlation coefficient values for numerical approximation
-#' of posterior densities. The grid uses adaptive allocation to place points
-#' strategically across three regions: around the observed correlation, near the
-#' extreme values (-1 and 1), and a base coverage of the middle range.
+#' of posterior densities. The grid begins with evenly spaced coverage from
+#' -0.999 to 0.999, and then more points are added around the observed
+#' correlation for greater precision around the peak of the distribution.
 #'
 #' @param r Numeric value. The observed sample correlation coefficient.
 #'   Must be between -1 and 1.
 #' @param n Numeric value. The sample size. Used to determine the spread of
 #'   points around the observed correlation via Fisher z-transformation.
 #' @param n_bins Integer. Total number of grid points desired. Will be allocated
-#'   proportionally: ~30% for extremes, ~40% around observed correlation,
-#'   remainder for base coverage. Minimum value of 10 is enforced.
+#'   proportionally: 70% for base coverage and 30% around observed correlation.
+#'   Minimum value of 100 is enforced.
 #'
 #' @return Numeric vector of correlation values between -0.999 and 0.999,
-#'   sorted in ascending order. The function aims to return approximately
-#'   n_bins points, but the actual number may be somewhat fewer due to
-#'   de-duplication.
-#'
-#' @details
-#' The function uses Fisher's z-transformation to create normally distributed
-#' points around the observed correlation in z-space, then transforms back to
-#' correlation space. The spread in z-space is 1 standard error (1/sqrt(n)),
-#' providing conservative coverage of plausible correlation values.
-#'
-#' For extreme regions, the function uses the beta distribution to create
-#' higher point density near the actual boundaries (±1). The boundary
-#' locations adapt based on the observed correlation to provide better
-#' coverage on the relevant side.
+#'   sorted in ascending order. The actual number of returned points may
+#'   be slightly less than `n_bins` due to de-duplication.
 #'
 #' @noRd
 create_rho_grid <- function(r, n, n_bins) {
 
-  n_bins <- max(n_bins, 10)
+  n_bins <- max(n_bins, 100)
 
-  extreme_range <- 0.15 * (1 - abs(r))
-  if (r >= 0) {
-    lower_extreme <- -0.8 - extreme_range
-    upper_extreme <- 0.999
-  } else {
-    lower_extreme <- -0.999
-    upper_extreme <- 0.8 + extreme_range
-  }
+  n_base <- round(n_bins * 0.7)
+  base_grid <- seq(from = -0.999, to = 0.999, length.out = n_base)
 
-  n_extremes <- round(n_bins * 0.3)
-  n_lower_extreme <- ceiling(n_extremes / 2)
-  n_upper_extreme <- n_extremes - n_lower_extreme
-  n_peak <- round(n_bins * 0.4)
-  n_base <- n_bins - n_extremes - n_peak
-
-  peak_grid <- tanh(seq(
-    from = atanh(r) - 1 / sqrt(n),
-    to = atanh(r) + 1 / sqrt(n),
-    length.out = n_peak
-  ))
+  n_peak <- n_bins - n_base
+  unit_grid <- stats::qlogis(
+    p = seq(from = 0, to = 1, length.out = n_peak + 2)
+  )
+  unit_grid <- unit_grid[-c(1, length(unit_grid))]
+  peak_grid <- tanh(
+    atanh(r) + unit_grid / sqrt(n)
+  )
   peak_grid <- pmax(-0.999, pmin(0.999, peak_grid))
 
-  base_start <- lower_extreme + 0.1
-  base_end <- upper_extreme - 0.1
-  if (base_end - base_start < 0.3) {
-    base_start <- -0.7
-    base_end <- 0.7
-  }
-  base_grid <- seq(
-    from = base_start,
-    to = base_end,
-    length.out = n_base
-  )
-
-  if (n_lower_extreme == 1) {
-    lower_extreme_grid <- (lower_extreme + base_start - 0.1) / 2
-  } else {
-    lower_props <- stats::pbeta(
-      q = seq(from = 0.05, to = 0.95, length.out = n_lower_extreme),
-      shape1 = 0.5,
-      shape2 = 2
-    )
-    lower_extreme_grid <- lower_extreme +
-      (base_start - 0.1 - lower_extreme) * lower_props
-  }
-
-  if (n_upper_extreme == 1) {
-    upper_extreme_grid <- (base_end + 0.1 + upper_extreme) / 2
-  } else {
-    upper_props <- stats::pbeta(
-      q = seq(from = 0.05, to = 0.95, length.out = n_upper_extreme),
-      shape1 = 2,
-      shape2 = 0.5
-    )
-    upper_extreme_grid <- (base_end + 0.1) +
-      (upper_extreme - base_end - 0.1) * upper_props
-  }
-
   result <- sort(unique(c(
-    lower_extreme_grid, base_grid, peak_grid, upper_extreme_grid
+    base_grid, peak_grid
   )))
-  result <- result[result >= -0.999 & result <= 0.999]
 
   return(result)
 
