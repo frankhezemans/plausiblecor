@@ -1,4 +1,4 @@
-#' @importFrom rlang .data :=
+#' @importFrom rlang .data := %||%
 #' @importFrom magrittr %>%
 #' @importFrom grid unit
 NULL

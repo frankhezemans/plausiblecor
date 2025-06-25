@@ -8,23 +8,15 @@ plot_sample_cor(
   .data,
   n_draws = Inf,
   style = c("dots", "hist"),
-  binwidth = grid::unit(c(1, Inf), "mm"),
-  breaks = ggdist::waiver(),
-  colour = "#4C4C4C",
-  fill = "#7F7F7F",
-  alpha = 0.75,
-  zero_refline = TRUE,
-  zero_refline_linetype = "dashed",
-  zero_refline_linewidth = 1.25,
-  zero_refline_colour = "black",
+  plot_aes = NULL,
+  zero_refline_aes = NULL,
   point_method = c("mean", "median"),
   interval_width = c(0.5, 0.8, 0.95),
   interval_method = c("hdci", "qi"),
   x_title = ggplot2::waiver(),
   x_axis_limits = NULL,
   plot_text_scaling = 1,
-  rng_seed = NULL,
-  ...
+  rng_seed = NULL
 )
 }
 \arguments{
@@ -34,21 +26,22 @@ least `.draw` and `r` columns.}
 \item{n_draws}{Integer specifying the maximum number of MCMC draws to plot.
 Default is `Inf` (use all draws).}
 
-\item{style}{Character, either `"dots"` (default) for a dotplot or `"hist"`
-for a histogram.}
+\item{style}{Character, either `"dots"` (default) for a dotplot using
+[ggdist::stat_dotsinterval()] or `"hist"` for a histogram using
+[ggdist::stat_histinterval()].}
 
-\item{binwidth, breaks}{Passed to [ggdist::stat_dotsinterval()] or
-[ggdist::stat_histinterval()]. Control bin width or histogram breaks.}
+\item{plot_aes}{A named list of aesthetics, passed to the underlying plotting
+function. Defaults to
+`list(binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress", colour = "#4C4C4C", fill = "#7F7F7F", alpha = 0.75)`
+if `style == "dots"`, or to
+`list(breaks = ggplot2::waiver(), colour = "#4C4C4C", fill = "#7F7F7F", alpha = 0.75)`
+if `style == "hist"`.}
 
-\item{colour, fill}{Colours for the plotted intervals/dots. Default greys.}
-
-\item{alpha}{Alpha transparency level for intervals/dots. Default is `0.75`.}
-
-\item{zero_refline}{Logical. If `TRUE` (default), adds a vertical dashed line
-at 0 to help reference null correlations.}
-
-\item{zero_refline_linetype, zero_refline_linewidth, zero_refline_colour}{Characters used to control the appearance of the reference line at
-zero (if applicable).}
+\item{zero_refline_aes}{A named list of aesthetics for the vertical reference
+line at zero (e.g., `linetype`, `linewidth`, `colour`), passed to
+[ggplot2::geom_vline()]. Defaults to
+`list(linetype = "dashed", linewidth = 1.25, colour = "black")`. Set
+to `FALSE` to omit the reference line entirely.}
 
 \item{point_method}{Character, `"mean"` (default) or `"median"`, indicating
 how to summarize the sample draws.}
@@ -61,23 +54,21 @@ continuous intervals or `"qi"` for quantile intervals.}
 
 \item{x_title}{Label for the x-axis. Defaults to waiver (no label).}
 
-\item{x_axis_limits}{Optional numeric vector of length 2 to control x-axis
-limits using [ggplot2::coord_cartesian()].}
+\item{x_axis_limits}{Numeric vector of length 2 that defines x-axis limits
+to "zoom" into, using [ggplot2::coord_cartesian()]. Alternatively,
+`NULL` (default) retains the full scale.}
 
 \item{plot_text_scaling}{Numeric scaling factor for axis text and title
 size. Default is `1`.}
 
 \item{rng_seed}{Optional integer seed for reproducible sampling of draws.}
-
-\item{...}{Additional arguments passed to [ggdist::stat_dotsinterval()] or
-[ggdist::stat_histinterval()].}
 }
 \value{
 A [ggplot2::ggplot()] object.
 }
 \description{
 Visualises the distribution of sample Pearson correlation coefficients
-obtained from [`run_plausible_cor()`], using either a dotplot or histogram
+obtained from [run_plausible_cor()], using either a dotplot or histogram
 style. This function wraps [ggdist::stat_dotsinterval()] or
 [ggdist::stat_histinterval()], providing a quick way to plot uncertainty
 about the sample correlations.

@@ -2,7 +2,7 @@
 #'
 #' @description
 #' Visualises the distribution of sample Pearson correlation coefficients
-#' obtained from [`run_plausible_cor()`], using either a dotplot or histogram
+#' obtained from [run_plausible_cor()], using either a dotplot or histogram
 #' style. This function wraps [ggdist::stat_dotsinterval()] or
 #' [ggdist::stat_histinterval()], providing a quick way to plot uncertainty
 #' about the sample correlations.
@@ -11,17 +11,20 @@
 #'        least `.draw` and `r` columns.
 #' @param n_draws Integer specifying the maximum number of MCMC draws to plot.
 #'        Default is `Inf` (use all draws).
-#' @param style Character, either `"dots"` (default) for a dotplot or `"hist"`
-#'        for a histogram.
-#' @param binwidth,breaks Passed to [ggdist::stat_dotsinterval()] or
-#'        [ggdist::stat_histinterval()]. Control bin width or histogram breaks.
-#' @param colour,fill Colours for the plotted intervals/dots. Default greys.
-#' @param alpha Alpha transparency level for intervals/dots. Default is `0.75`.
-#' @param zero_refline Logical. If `TRUE` (default), adds a vertical dashed line
-#'        at 0 to help reference null correlations.
-#' @param zero_refline_linetype,zero_refline_linewidth,zero_refline_colour
-#'        Characters used to control the appearance of the reference line at
-#'        zero (if applicable).
+#' @param style Character, either `"dots"` (default) for a dotplot using
+#'        [ggdist::stat_dotsinterval()] or `"hist"` for a histogram using
+#'        [ggdist::stat_histinterval()].
+#' @param plot_aes A named list of aesthetics, passed to the underlying plotting
+#'        function. Defaults to
+#'        `list(binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress", colour = "#4C4C4C", fill = "#7F7F7F", alpha = 0.75)`
+#'        if `style == "dots"`, or to
+#'        `list(breaks = ggplot2::waiver(), colour = "#4C4C4C", fill = "#7F7F7F", alpha = 0.75)`
+#'        if `style == "hist"`.
+#' @param zero_refline_aes A named list of aesthetics for the vertical reference
+#'        line at zero (e.g., `linetype`, `linewidth`, `colour`), passed to
+#'        [ggplot2::geom_vline()]. Defaults to
+#'        `list(linetype = "dashed", linewidth = 1.25, colour = "black")`. Set
+#'        to `FALSE` to omit the reference line entirely.
 #' @param point_method Character, `"mean"` (default) or `"median"`, indicating
 #'        how to summarize the sample draws.
 #' @param interval_width Numeric vector giving widths of uncertainty intervals
@@ -29,13 +32,12 @@
 #' @param interval_method Character, `"hdci"` (default) for highest-density
 #'        continuous intervals or `"qi"` for quantile intervals.
 #' @param x_title Label for the x-axis. Defaults to waiver (no label).
-#' @param x_axis_limits Optional numeric vector of length 2 to control x-axis
-#'        limits using [ggplot2::coord_cartesian()].
+#' @param x_axis_limits Numeric vector of length 2 that defines x-axis limits
+#'        to "zoom" into, using [ggplot2::coord_cartesian()]. Alternatively,
+#'        `NULL` (default) retains the full scale.
 #' @param plot_text_scaling Numeric scaling factor for axis text and title
 #'        size. Default is `1`.
 #' @param rng_seed Optional integer seed for reproducible sampling of draws.
-#' @param ... Additional arguments passed to [ggdist::stat_dotsinterval()] or
-#'        [ggdist::stat_histinterval()].
 #'
 #' @return A [ggplot2::ggplot()] object.
 #'
@@ -53,23 +55,15 @@ plot_sample_cor <- function(
     .data,
     n_draws = Inf,
     style = c("dots", "hist"),
-    binwidth = grid::unit(c(1, Inf), "mm"),
-    breaks = ggdist::waiver(),
-    colour = "#4C4C4C",
-    fill = "#7F7F7F",
-    alpha = 0.75,
-    zero_refline = TRUE,
-    zero_refline_linetype = "dashed",
-    zero_refline_linewidth = 1.25,
-    zero_refline_colour = "black",
+    plot_aes = NULL,
+    zero_refline_aes = NULL,
     point_method = c("mean", "median"),
     interval_width = c(0.5, 0.8, 0.95),
     interval_method = c("hdci", "qi"),
     x_title = ggplot2::waiver(),
     x_axis_limits = NULL,
     plot_text_scaling = 1,
-    rng_seed = NULL,
-    ...
+    rng_seed = NULL
 ) {
 
   style <- rlang::arg_match(arg = style)
@@ -91,66 +85,75 @@ plot_sample_cor <- function(
       rng_seed = rng_seed
     )
 
-  base_plot <- ggplot2::ggplot(
+  result <- ggplot2::ggplot(
     data = plot_data,
     mapping = ggplot2::aes(
       x = .data[["r"]]
     )
   )
 
-  if (zero_refline) {
-    base_plot <- base_plot +
+  if (!isFALSE(zero_refline_aes)) {
+    zero_refline_aes <- zero_refline_aes %||% list(
+      linetype = "dashed", linewidth = 1.25, colour = "black"
+    )
+    validate_geom_args(
+      aes_list = zero_refline_aes,
+      disallowed_names = "xintercept",
+      arg_name = "zero_refline_aes"
+    )
+    result <- result +
       ggplot2::geom_vline(
         xintercept = 0,
-        linetype = zero_refline_linetype,
-        linewidth = zero_refline_linewidth,
-        colour = zero_refline_colour
+        !!!zero_refline_aes
       )
   }
 
   if (style == "dots") {
-
-    result <- base_plot +
+    plot_aes <- plot_aes %||% list(
+      binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress",
+      colour = "#4C4C4C", fill = "#7F7F7F", alpha = 0.75
+    )
+    validate_geom_args(
+      aes_list = plot_aes,
+      disallowed_names = c(
+        "mapping", "data", "geom", "position", "point_interval", ".width"
+      ),
+      arg_name = "plot_aes"
+    )
+    result <- result +
       ggdist::stat_dotsinterval(
         point_interval = paste0(point_method, "_", interval_method),
         .width = interval_width,
-        binwidth = binwidth,
-        overflow = "compress",
-        alpha = alpha,
-        colour = colour,
-        fill = fill,
-        ...
+        !!!plot_aes
       )
-
   } else {
-
-    result <- base_plot +
+    plot_aes <- plot_aes %||% list(
+      breaks = ggdist::waiver(),
+      colour = "#4C4C4C", fill = "#7F7F7F", alpha = 0.75
+    )
+    validate_geom_args(
+      aes_list = plot_aes,
+      disallowed_names = c(
+        "mapping", "data", "geom", "position", "point_interval", ".width"
+      ),
+      arg_name = "plot_aes"
+    )
+    result <- result +
       ggdist::stat_histinterval(
         point_interval = paste0(point_method, "_", interval_method),
         .width = interval_width,
-        breaks = breaks,
-        alpha = alpha,
-        colour = colour,
-        fill = fill,
-        ...
+        !!!plot_aes
       )
-
   }
 
   result <- result +
     ggplot2::labs(
       x = x_title
-    )
-
-  result <- add_theme_elements(
-    x = result,
-    plot_text_scaling = plot_text_scaling
-  )
-
-  if (!is.null(x_axis_limits)) {
-    result <- result +
-      ggplot2::coord_cartesian(xlim = x_axis_limits)
-  }
+    ) +
+    ggplot2::coord_cartesian(
+      xlim = x_axis_limits
+    ) +
+    add_theme_elements(plot_text_scaling)
 
   return(result)
 
@@ -160,72 +163,67 @@ plot_sample_cor <- function(
 #'
 #' @description
 #' Visualises density traces of posterior distributions of Pearson correlation
-#' coefficients obtained from [`run_plausible_cor()`], along with the mean
+#' coefficients obtained from [run_plausible_cor()], along with the mean
 #' posterior density across all MCMC samples.
 #'
 #' @param .data A data frame returned by [run_plausible_cor()], containing at
-#'        least `.draw` and `r` columns.
+#'        least `.draw`, `r`, and `posterior_updf` columns.
 #' @param n_draws Integer specifying the maximum number of MCMC draws to plot.
-#'        Default is `Inf` (use all draws).
-
-#' @param .data A data frame returned by [run_plausible_cor()], containing
-#'   `.draw`, `r`, and `posterior_updf` columns.
-#' @param n_draws Integer specifying the maximum number of MCMC draws to plot.
-#'   Default is `500` to avoid overplotting of density traces.
-#' @param trace_colour Colour for individual trace lines. Defaults to dark gray
-#'   (`"#4C4C4C"`).
-#' @param trace_alpha Alpha (transparency) for individual trace lines. Defaults
-#'   to `0.1`.
-#' @param trace_linewidth Line width for individual trace lines. Defaults to
-#'   `0.1`.
-#' @param mean_colour Colour for the mean density trace. Defaults to blue
-#'   (`"#377EB8"`).
-#' @param mean_alpha Alpha (transparency) for the mean density trace. Defaults
-#'   to `1`.
-#' @param mean_linewidth Line width for the mean density trace. Defaults to `3`.
-#' @param zero_refline Logical. If `TRUE` (default), adds a vertical dashed line
-#'        at 0 to help reference null correlations.
-#' @param zero_refline_linetype,zero_refline_linewidth,zero_refline_colour
-#'        Characters used to control the appearance of the reference line at
-#'        zero (if applicable).
-#' @param x_title Label for the x-axis. Defaults to [`ggplot2::waiver()`waiver]
-#'   (no label).
-#' @param x_axis_limits Optional numeric vector of length 2 to control x-axis
-#'        limits using [ggplot2::coord_cartesian()].
+#'        Defaults to `500` to avoid overplotting of density traces.
+#' @param trace_aes A named list of aesthetics for the individual posterior
+#'        density traces (e.g., `colour`, `alpha`, `linewidth`), passed to
+#'        [ggplot2::geom_line()]. Defaults to
+#'        `list(colour = "#4C4C4C", alpha = 0.1, linewidth = 0.1)`. Set to
+#'        `FALSE` to omit these lines entirely.
+#' @param mean_aes A named list of aesthetics for the mean posterior density
+#'        trace (e.g., `colour`, `alpha`, `linewidth`), passed to
+#'        [ggplot2::geom_line()]. Defaults to
+#'        `list(colour = "#377EB8", alpha = 1, linewidth = 1.25)`. Set to
+#'        `FALSE` to omit the mean trace entirely.
+#' @param zero_refline_aes A named list of aesthetics for the vertical reference
+#'        line at zero (e.g., `linetype`, `linewidth`, `colour`), passed to
+#'        [ggplot2::geom_vline()]. Defaults to
+#'        `list(linetype = "dashed", linewidth = 1.25, colour = "black")`. Set
+#'        to `FALSE` to omit the reference line entirely.
+#' @param x_title Label for the x-axis. Defaults to [ggplot2::waiver()],
+#'        meaning no label is shown.
+#' @param x_axis_limits Numeric vector of length 2 that defines x-axis limits
+#'        to "zoom" into, using [ggplot2::coord_cartesian()]. Alternatively,
+#'        `NULL` (default) retains the full scale.
 #' @param plot_text_scaling Numeric scaling factor for axis text and title
 #'        size. Default is `1`.
-#' @param rng_seed Optional integer seed for reproducible sampling of draws.
+#' @param rng_seed Optional integer seed to ensure reproducible sampling of
+#'        posterior draws.
 #'
 #' @details
-#' This function plots the plausible posterior distributions of the Pearson correlation
-#' coefficient obtained via [run_plausible_cor()]. It shows:
+#' This function plots the plausible posterior distributions of the Pearson
+#' correlation coefficient obtained via [run_plausible_cor()]. It displays:
 #'
-#' - Density traces for a random subset (`n_draws`) of individual posterior distributions,
-#'   reflecting uncertainty both in individual parameter estimates and in generalising to the population.
-#' - The mean posterior density across all draws, providing a population-level summary of the
-#'   plausible correlation.
+#' - Density traces for a subset (`n_draws`) of individual posterior draws,
+#'   capturing both parameter uncertainty and population variability.
+#' - The mean posterior density across all draws, offering a summary of the
+#'   plausible population-level correlation.
+#' - An optional vertical reference line at `r = 0` to facilitate visual
+#'   interpretation.
 #'
-#' Subsampling with `n_draws` is used to reduce overplotting when many MCMC draws are available.
-#' However, the mean posterior density is always based on the full data.
+#' Subsampling with `n_draws` is used to limit visual clutter when many MCMC
+#' draws are available. However, the mean posterior density is always computed
+#' from the full set of draws.
+#'
+#' Each plotted layer can be customized using a named list of aesthetic values,
+#' or disabled entirely by passing `FALSE`.
 #'
 #' @return A [ggplot2::ggplot] object.
 #'
-#' @seealso [run_plausible_cor()].
+#' @seealso [run_plausible_cor()]
 #'
 #' @export
 plot_population_cor <- function(
     .data,
     n_draws = 500,
-    trace_colour = "#4C4C4C",
-    trace_alpha = 0.1,
-    trace_linewidth = 0.1,
-    mean_colour = "#377EB8",
-    mean_alpha = 1,
-    mean_linewidth = 1.25,
-    zero_refline = TRUE,
-    zero_refline_linetype = "dashed",
-    zero_refline_linewidth = 1.25,
-    zero_refline_colour = "black",
+    trace_aes = NULL,
+    mean_aes = NULL,
+    zero_refline_aes = NULL,
     x_title = ggplot2::waiver(),
     x_axis_limits = NULL,
     plot_text_scaling = 1,
@@ -257,56 +255,76 @@ plot_population_cor <- function(
       by = ".draw"
     )
 
-  base_plot <- ggplot2::ggplot(
+  result <- ggplot2::ggplot(
     data = plot_data,
     mapping = ggplot2::aes(
       x = .data[["x"]]
     )
   )
 
-  if (zero_refline) {
-    base_plot <- base_plot +
+  if (!isFALSE(zero_refline_aes)) {
+    zero_refline_aes <- zero_refline_aes %||% list(
+      linetype = "dashed", linewidth = 1.25, colour = "black"
+    )
+    validate_geom_args(
+      aes_list = zero_refline_aes,
+      disallowed_names = "xintercept",
+      arg_name = "zero_refline_aes"
+    )
+    result <- result +
       ggplot2::geom_vline(
         xintercept = 0,
-        linetype = zero_refline_linetype,
-        linewidth = zero_refline_linewidth,
-        colour = zero_refline_colour
+        !!!zero_refline_aes
       )
   }
 
-  result <- base_plot +
-    ggplot2::geom_line(
-      mapping = ggplot2::aes(
-        y = .data[["density"]],
-        group = .data[["r"]]
-      ),
-      alpha = trace_alpha,
-      colour = trace_colour,
-      linewidth = trace_linewidth
-    ) +
-    ggplot2::geom_line(
-      data = mean_data,
-      mapping = ggplot2::aes(
-        x = .data[["x"]],
-        y = .data[["mean_density"]]
-      ),
-      alpha = mean_alpha,
-      colour = mean_colour,
-      linewidth = mean_linewidth
-    ) +
+  if (!isFALSE(trace_aes)) {
+    trace_aes <- trace_aes %||% list(
+      colour = "#4C4C4C", alpha = 0.1, linewidth = 0.1
+    )
+    validate_geom_args(
+      aes_list = trace_aes,
+      disallowed_names = c("mapping", "data", "stat", "position"),
+      arg_name = "trace_aes"
+    )
+    result <- result +
+      ggplot2::geom_line(
+        mapping = ggplot2::aes(
+          y = .data[["density"]],
+          group = .data[["r"]]
+        ),
+        !!!trace_aes
+      )
+  }
+
+  if (!isFALSE(mean_aes)) {
+    mean_aes <- mean_aes %||% list(
+      colour = "#377EB8", alpha = 1, linewidth = 1.25
+    )
+    validate_geom_args(
+      aes_list = mean_aes,
+      disallowed_names = c("mapping", "data", "stat", "position"),
+      arg_name = "mean_aes"
+    )
+    result <- result +
+      ggplot2::geom_line(
+        data = mean_data,
+        mapping = ggplot2::aes(
+          x = .data[["x"]],
+          y = .data[["mean_density"]]
+        ),
+        !!!mean_aes
+      )
+  }
+
+  result <- result +
     ggplot2::labs(
       x = x_title
-    )
-
-  result <- add_theme_elements(
-    x = result,
-    plot_text_scaling = plot_text_scaling
-  )
-
-  if (!is.null(x_axis_limits)) {
-    result <- result +
-      ggplot2::coord_cartesian(xlim = x_axis_limits)
-  }
+    ) +
+    ggplot2::coord_cartesian(
+      xlim = x_axis_limits
+    ) +
+    add_theme_elements(plot_text_scaling)
 
   return(result)
 
@@ -337,13 +355,55 @@ draw_rows <- function(.data, n_draws, rng_seed) {
 }
 
 #' @noRd
-add_theme_elements <- function(x, plot_text_scaling) {
-  result <- x +
+validate_geom_args <- function(
+    aes_list,
+    allowed_names = character(),
+    disallowed_names = character(),
+    arg_name = deparse(substitute(aes_list))
+) {
+  if (!is.list(aes_list)) {
+    rlang::abort(
+      message = sprintf("`%s` must be a list or FALSE.", arg_name)
+    )
+  }
+  if (isFALSE(aes_list) || is.null(aes_list)) {
+    return(invisible(x = NULL))
+  }
+
+  actual_names <- names(aes_list)
+  disallowed_found <- intersect(actual_names, disallowed_names)
+  if (length(disallowed_found) > 0) {
+    rlang::abort(
+      message = sprintf(
+        "In `%s`, the following names are not allowed: %s",
+        arg_name, paste(disallowed_found, collapse = ", ")
+      )
+    )
+  }
+
+  unknown_names <- setdiff(actual_names, allowed_names)
+  if (length(unknown_names) > 0) {
+    rlang::abort(
+      message = sprintf(
+        "In `%s`, unknown aesthetic name(s): %s\nAllowed: %s",
+        arg_name,
+        paste(unknown_names, collapse = ", "),
+        paste(allowed_names, collapse = ", ")
+      )
+    )
+  }
+
+  return(invisible(x = NULL))
+}
+
+
+#' @noRd
+add_theme_elements <- function(plot_text_scaling) {
+  result <- ggplot2::theme_minimal() +
     # ggplot2::scale_x_continuous(
     #   # https://doi.org/10.1016/j.paid.2016.06.069
     #   breaks = c(-1, -0.5, -0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.5, 1),
     # ) +
-    ggplot2::theme_minimal() +
     ggplot2::theme(
       panel.grid.minor.y = ggplot2::element_blank(),
       panel.grid.major.y = ggplot2::element_blank(),
