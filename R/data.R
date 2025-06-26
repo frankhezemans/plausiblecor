@@ -1,0 +1,46 @@
+#' Forstmann et al. (2008) fMRI contrasts
+#'
+#' Estimated fMRI contrasts from Forstmann et al. (2008), representing the
+#' percentage of BOLD signal change in two brain regions: the right anterior
+#' striatum (caudate nucleus) and the right pre-supplementary motor area
+#' (pre-SMA).
+#'
+#' The data were collected while participants performed a speeded perceptual
+#' decision-making task. On each trial, participants judged whether a cloud of
+#' moving dots appeared to move to the left or to the right. Before each trial,
+#' an **instructional cue** indicated the emphasis for that trial: either to
+#' respond as **quickly** as possible (speed condition), as **accurately** as
+#' possible (accuracy condition), or to adopt a **balanced** speed–accuracy
+#' trade-off (neutral condition). These cues manipulated response caution on a
+#' trial-by-trial basis.
+#'
+#' The fMRI contrasts reflect results from a group-level conjunction analysis
+#' that identified voxels more active in both the *speed > accuracy* and *speed > neutral*
+#' contrasts, using a cluster-level correction for multiple comparisons at
+#' *P* < 0.001. Brain regions of interest were thus **functionally defined** based on
+#' this contrast-conjunction, and included contiguous voxel clusters in the
+#' right anterior striatum and right pre-SMA that exceeded the critical z-threshold.
+#'
+#' To compute the percentage signal change, the time course of the BOLD response
+#' was extracted from the activated voxel clusters in each region for each participant.
+#' The response was measured relative to a baseline defined by null events and
+#' averaged across the 4–8 second window following presentation of the **instructional cue**.
+#' These values reflect increased neural activation in the speed condition relative
+#' to both the neutral and accuracy conditions.
+#'
+#' @format ## `Forstmann_fMRI`
+#' A data frame with 19 rows and 3 columns:
+#' \describe{
+#'   \item{subjects}{Factor variable: de-identified participant ID codes.}
+#'   \item{striatum}{Numeric variable: percentage BOLD signal change in the right caudate nucleus.}
+#'   \item{pre_sma}{Numeric variable: percentage BOLD signal change in the right pre-SMA.}
+#' }
+#'
+#' @source <https://osf.io/download/f7553/>
+#'
+#' @references
+#' Forstmann, B. U., Dutilh, G., Brown, S., Neumann, J., von Cramon, D. Y.,
+#' Ridderinkhof, K. R., & Wagenmakers, E.-J. (2008). Striatum and pre-SMA
+#' facilitate decision-making under time pressure. *Proceedings of the National
+#' Academy of Sciences*, 105(45), 17538–17542. \doi{10.1073/pnas.0805903105}
+"Forstmann_fMRI"
