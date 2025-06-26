@@ -102,7 +102,8 @@ plot_sample_cor <- function(
       arg_name = "zero_refline_aes"
     )
     result <- result +
-      ggplot2::geom_vline(
+      rlang::exec(
+        .fn = ggplot2::geom_vline,
         xintercept = 0,
         !!!zero_refline_aes
       )
@@ -121,7 +122,8 @@ plot_sample_cor <- function(
       arg_name = "plot_aes"
     )
     result <- result +
-      ggdist::stat_dotsinterval(
+      rlang::exec(
+        .fn = ggdist::stat_dotsinterval,
         point_interval = paste0(point_method, "_", interval_method),
         .width = interval_width,
         !!!plot_aes
@@ -139,7 +141,8 @@ plot_sample_cor <- function(
       arg_name = "plot_aes"
     )
     result <- result +
-      ggdist::stat_histinterval(
+      rlang::exec(
+        .fn = ggdist::stat_histinterval,
         point_interval = paste0(point_method, "_", interval_method),
         .width = interval_width,
         !!!plot_aes
@@ -272,7 +275,8 @@ plot_population_cor <- function(
       arg_name = "zero_refline_aes"
     )
     result <- result +
-      ggplot2::geom_vline(
+      rlang::exec(
+        .fn = ggplot2::geom_vline,
         xintercept = 0,
         !!!zero_refline_aes
       )
@@ -288,7 +292,8 @@ plot_population_cor <- function(
       arg_name = "trace_aes"
     )
     result <- result +
-      ggplot2::geom_line(
+      rlang::exec(
+        .fn = ggplot2::geom_line,
         mapping = ggplot2::aes(
           y = .data[["density"]],
           group = .data[["r"]]
@@ -307,7 +312,8 @@ plot_population_cor <- function(
       arg_name = "mean_aes"
     )
     result <- result +
-      ggplot2::geom_line(
+      rlang::exec(
+        .fn = ggplot2::geom_line,
         data = mean_data,
         mapping = ggplot2::aes(
           x = .data[["x"]],
@@ -381,16 +387,18 @@ validate_geom_args <- function(
     )
   }
 
-  unknown_names <- setdiff(actual_names, allowed_names)
-  if (length(unknown_names) > 0) {
-    rlang::abort(
-      message = sprintf(
-        "In `%s`, unknown aesthetic name(s): %s\nAllowed: %s",
-        arg_name,
-        paste(unknown_names, collapse = ", "),
-        paste(allowed_names, collapse = ", ")
+  if (length(allowed_names) >= 1) {
+    unknown_names <- setdiff(actual_names, allowed_names)
+    if (length(unknown_names) > 0) {
+      rlang::abort(
+        message = sprintf(
+          "In `%s`, unknown aesthetic name(s): %s\nAllowed: %s",
+          arg_name,
+          paste(unknown_names, collapse = ", "),
+          paste(allowed_names, collapse = ", ")
+        )
       )
-    )
+    }
   }
 
   return(invisible(x = NULL))
