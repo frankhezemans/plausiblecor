@@ -623,14 +623,7 @@ get_interval <- function(
   dx <- diff(val)[1]
   cdf <- cumsum(dens) * dx
 
-  compute_interval <- function(
-    w,
-    val = val,
-    dens = dens,
-    method = method,
-    dx = dx,
-    cdf = cdf
-  ) {
+  compute_interval <- function(w) {
     if (method == "qi") {
       qi_approx <- stats::approx(
         x = cdf,
@@ -806,11 +799,22 @@ summarise_samples <- function(
     mean(data[[varname]] < 0)
   )
 
+  point_fun <- switch(
+    point_method,
+    "mean" = mean,
+    "median" = stats::median
+  )
+  interval_fun <- switch(
+    interval_method,
+    "hdci" = ggdist::hdci,
+    "qi" = ggdist::qi
+  )
+
   result <- data %>%
     ggdist::point_interval(
       .width = interval_width,
-      .point = eval(rlang::sym(point_method)),
-      .interval = eval(rlang::sym(interval_method)),
+      .point = point_fun,
+      .interval = interval_fun,
       ...
     ) %>%
     dplyr::select(
