@@ -1,7 +1,6 @@
 library(dplyr, warn.conflicts = FALSE)
 library(purrr)
 library(tibble)
-library(readr)
 library(usethis)
 
 # Download data from Forstmann et al. (2008), released with Ly et al. (2017) on
@@ -43,5 +42,4 @@ Forstmann_fMRI <- load_forstmann_osf("https://osf.io/download/f7553/") %>%
     pre_sma = presma
   )
 
-readr::write_csv(Forstmann_fMRI, "data-raw/Forstmann_fMRI.csv")
 usethis::use_data(Forstmann_fMRI, overwrite = TRUE)
