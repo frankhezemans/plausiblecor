@@ -9,6 +9,9 @@ plot_population_cor(
   n_draws = 500,
   trace_aes = NULL,
   mean_aes = NULL,
+  mean_interval_args = NULL,
+  mean_interval_aes = NULL,
+  sample_rug_aes = NULL,
   zero_refline_aes = NULL,
   x_title = ggplot2::waiver(),
   x_axis_limits = NULL,
@@ -32,14 +35,32 @@ density traces (e.g., `colour`, `alpha`, `linewidth`), passed to
 \item{mean_aes}{A named list of aesthetics for the mean posterior density
 trace (e.g., `colour`, `alpha`, `linewidth`), passed to
 [ggplot2::geom_line()]. Defaults to
-`list(colour = "#377EB8", alpha = 1, linewidth = 1.25)`. Set to
+`list(colour = "#377EB8", linewidth = 1.25)`. Set to
 `FALSE` to omit the mean trace entirely.}
+
+\item{mean_interval_args}{A named list that specifies how an interval for the
+mean posterior density is computed. Should include the elements `width`,
+which is a single numeric value of the desired interval width, and `method`,
+which is a character specifying which interval type to compute.
+Defaults to `list(width = 0.95, method = "hdci")`.}
+
+\item{mean_interval_aes}{A named list of aesthetics for a light shaded
+background rectangle that represents the requested interval of the
+mean posterior density trace. Arguments are passed to [ggplot2::geom_vline()].
+Defaults to `list(fill = "#BDD7E7", alpha = 0.4)`.
+Set to `FALSE` to omit the interval entirely.}
+
+\item{sample_rug_aes}{A named list of aesthetics for "rug" plot of the sample
+correlation coefficients on which the individual posterior density
+traces are based. Arguments are passed to [ggplot2::geom_rug()].
+Defaults to `list(alpha = 0.1, linewidth = 0.1, length = grid::unit(0.03, "npc"))`.
+Set to `FALSE` to omit the rug plot entirely.}
 
 \item{zero_refline_aes}{A named list of aesthetics for the vertical reference
 line at zero (e.g., `linetype`, `linewidth`, `colour`), passed to
 [ggplot2::geom_vline()]. Defaults to
-`list(linetype = "dashed", linewidth = 1.25, colour = "black")`. Set
-to `FALSE` to omit the reference line entirely.}
+`list(linetype = "dashed", linewidth = 0.75)`. Set to `FALSE` to omit
+the reference line entirely.}
 
 \item{x_title}{Label for the x-axis. Defaults to [ggplot2::waiver()],
 meaning no label is shown.}

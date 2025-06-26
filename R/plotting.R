@@ -181,13 +181,28 @@ plot_sample_cor <- function(
 #' @param mean_aes A named list of aesthetics for the mean posterior density
 #'        trace (e.g., `colour`, `alpha`, `linewidth`), passed to
 #'        [ggplot2::geom_line()]. Defaults to
-#'        `list(colour = "#377EB8", alpha = 1, linewidth = 1.25)`. Set to
+#'        `list(colour = "#377EB8", linewidth = 1.25)`. Set to
 #'        `FALSE` to omit the mean trace entirely.
+#' @param mean_interval_args A named list that specifies how an interval for the
+#'        mean posterior density is computed. Should include the elements `width`,
+#'        which is a single numeric value of the desired interval width, and `method`,
+#'        which is a character specifying which interval type to compute.
+#'        Defaults to `list(width = 0.95, method = "hdci")`.
+#' @param mean_interval_aes A named list of aesthetics for a light shaded
+#'        background rectangle that represents the requested interval of the
+#'        mean posterior density trace. Arguments are passed to [ggplot2::geom_vline()].
+#'        Defaults to `list(fill = "#BDD7E7", alpha = 0.4)`.
+#'        Set to `FALSE` to omit the interval entirely.
+#' @param sample_rug_aes A named list of aesthetics for "rug" plot of the sample
+#'        correlation coefficients on which the individual posterior density
+#'        traces are based. Arguments are passed to [ggplot2::geom_rug()].
+#'        Defaults to `list(alpha = 0.1, linewidth = 0.1, length = grid::unit(0.03, "npc"))`.
+#'        Set to `FALSE` to omit the rug plot entirely.
 #' @param zero_refline_aes A named list of aesthetics for the vertical reference
 #'        line at zero (e.g., `linetype`, `linewidth`, `colour`), passed to
 #'        [ggplot2::geom_vline()]. Defaults to
-#'        `list(linetype = "dashed", linewidth = 1.25, colour = "black")`. Set
-#'        to `FALSE` to omit the reference line entirely.
+#'        `list(linetype = "dashed", linewidth = 0.75)`. Set to `FALSE` to omit
+#'        the reference line entirely.
 #' @param x_title Label for the x-axis. Defaults to [ggplot2::waiver()],
 #'        meaning no label is shown.
 #' @param x_axis_limits Numeric vector of length 2 that defines x-axis limits
@@ -226,6 +241,9 @@ plot_population_cor <- function(
     n_draws = 500,
     trace_aes = NULL,
     mean_aes = NULL,
+    mean_interval_args = NULL,
+    mean_interval_aes = NULL,
+    sample_rug_aes = NULL,
     zero_refline_aes = NULL,
     x_title = ggplot2::waiver(),
     x_axis_limits = NULL,
@@ -233,19 +251,21 @@ plot_population_cor <- function(
     rng_seed = NULL
 ) {
 
+  input_data <- .data
+
   validate_column_inputs(
     col_names = c(".draw", "r", "posterior_updf"),
-    data_frame = .data,
+    data_frame = input_data,
     data_name = ".data"
   )
 
-  trace_data <- .data %>%
+  trace_data <- input_data %>%
     get_posterior_rho_densities()
 
   mean_data <- trace_data %>%
     get_mean_posterior_rho()
 
-  plot_data <- .data %>%
+  plot_data <- input_data %>%
     dplyr::select(
       dplyr::all_of(".draw")
     ) %>%
@@ -265,9 +285,48 @@ plot_population_cor <- function(
     )
   )
 
+  if (!isFALSE(mean_interval_aes)) {
+    mean_interval_args <- mean_interval_args %||% list(
+      width = 0.95, method = "hdci"
+    )
+    validate_geom_args(
+      aes_list = mean_interval_args,
+      allowed_names = c("width", "method"),
+      arg_name = "mean_interval_args"
+    )
+    mean_interval <- get_interval(
+      val = mean_data[["x"]],
+      dens = mean_data[["mean_density"]],
+      width = mean_interval_args[["width"]],
+      method = mean_interval_args[["method"]]
+    )
+
+    mean_interval_aes <- mean_interval_aes %||% list(
+      fill = "#BDD7E7", alpha = 0.4
+    )
+    validate_geom_args(
+      aes_list = mean_interval_aes,
+      disallowed_names = c(
+        "geom", "x", "y", "xmin", "xmax", "ymin", "ymax", "xend", "yend"
+      ),
+      arg_name = "mean_interval_aes"
+    )
+
+    result <- result +
+      rlang::exec(
+        .fn = ggplot2::annotate,
+        geom = "rect",
+        xmin = min(mean_interval[["lower"]]),
+        xmax = max(mean_interval[["upper"]]),
+        ymin = -Inf,
+        ymax = Inf,
+        !!!mean_interval_aes
+      )
+  }
+
   if (!isFALSE(zero_refline_aes)) {
     zero_refline_aes <- zero_refline_aes %||% list(
-      linetype = "dashed", linewidth = 1.25, colour = "black"
+      linetype = "dashed", linewidth = 0.75
     )
     validate_geom_args(
       aes_list = zero_refline_aes,
@@ -279,6 +338,29 @@ plot_population_cor <- function(
         .fn = ggplot2::geom_vline,
         xintercept = 0,
         !!!zero_refline_aes
+      )
+  }
+
+  if (!isFALSE(sample_rug_aes)) {
+    sample_rug_aes <- sample_rug_aes %||% list(
+      alpha = 0.1, linewidth = 0.1, length = grid::unit(0.03, "npc")
+    )
+    validate_geom_args(
+      aes_list = sample_rug_aes,
+      disallowed_names = c(
+        "mapping", "data", "stat", "position", "outside", "sides"
+      ),
+      arg_name = "sample_rug_aes"
+    )
+    result <- result +
+      rlang::exec(
+        .fn = ggplot2::geom_rug,
+        data = input_data,
+        mapping = ggplot2::aes(
+          x = .data[["r"]]
+        ),
+        sides = "b",
+        !!!sample_rug_aes
       )
   }
 
@@ -304,7 +386,7 @@ plot_population_cor <- function(
 
   if (!isFALSE(mean_aes)) {
     mean_aes <- mean_aes %||% list(
-      colour = "#377EB8", alpha = 1, linewidth = 1.25
+      colour = "#377EB8", linewidth = 1.25
     )
     validate_geom_args(
       aes_list = mean_aes,
