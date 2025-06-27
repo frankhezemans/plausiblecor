@@ -9,15 +9,21 @@ design_forstmann <- EMC2::design(
     A ~ 1,  # across-trial variability in start point: shared across conditions
     B ~ E,  # distance from start point to threshold: varying by speed emphasis
     t0 ~ 1, # non-decision time: shared across conditions
-    sv ~ 1  # across-trial variability in drift coefficient: shared across conditions
+    sv ~ lM  # across-trial variability in drift coefficient: varying by S-R match
   ),
   model = EMC2::LBA,
   data = EMC2::forstmann,
   contrasts = list(
-    # contrast matrix for effect of S-R match on v
+    # contrast matrices for effects of S-R match on v and sv
     v = list(
       lM = matrix(
         data = c(-1/2, 1/2),
+        dimnames = list(NULL, "diff")
+      )
+    ),
+    sv = list(
+      lM = matrix(
+        data = c(1/2, -1/2),
         dimnames = list(NULL, "diff")
       )
     ),
@@ -40,8 +46,8 @@ design_forstmann <- EMC2::design(
   ),
   # function to determine whether a given accumulator matches the stimulus
   matchfun = function(x) x$S == x$lR,
-  # across-trial variability in drift coefficient fixed to satisfy scaling
-  # constraint of LBA model
+  # intercept of across-trial variability in drift coefficient fixed to satisfy
+  # scaling constraint of LBA model
   constants = c(sv = log(1))
 )
 
@@ -64,12 +70,12 @@ prior_forstmann <- EMC2::prior(
   design = design_forstmann,
   type = "standard",
   pmean = c(
-    v = 2, v_lMdiff = 1, A = log(0.5), t0 = log(0.2),
-    B = log(0.5), B_Espeed_vs_avg = -0.5, B_Eneut_vs_acc = -0.2
+    v = 1.5, v_lMdiff = 2, sv_lMdiff = 0.5, A = log(0.5), t0 = log(0.15),
+    B = log(0.5), B_Espeed_vs_avg = -0.5, B_Eneut_vs_acc = -0.25
   ),
   psd = c(
-    v = 1, v_lMdiff = 0.5, A = 0.4, t0 = 0.5,
-    B = 0.3, B_Espeed_vs_avg = 0.3, B_Eneut_vs_acc = 0.3
+    v = 1.5, v_lMdiff = 2, sv_lMdiff = 0.5, A = 0.5, t0 = 0.25,
+    B = 0.25, B_Espeed_vs_avg = 0.25, B_Eneut_vs_acc = 0.25
   )
 )
 
@@ -85,13 +91,15 @@ emc_forstmann <- EMC2::make_emc(
 # to run, depending on the capabilities of your machine
 fit_forstmann <- EMC2::fit(
   emc = emc_forstmann,
-  iter = 1500 #,
-  # fileName = "data-raw/Forstmann_EMC2_fit.RData"
+  iter = 1500,
+  fileName = "data-raw/Forstmann_EMC2_fit.RData"
 )
 
-# R-hats all practically equal to 1; effective sample sizes at least several
-# thousands per parameter.
+# diagnostics for group-level parameters:
+# R-hats all practically equal to 1; effective sample sizes well over 1000 per
+# parameter.
 summary(fit_forstmann, selection = "mu")
+summary(fit_forstmann, selection = "sigma2")
 
 # group-level hypothesis test: effect of speed condition (relative to both
 # neutral and accuracy conditions) on distance to threshold.
@@ -148,7 +156,7 @@ Forstmann_LBA <- parameters(
   # compute measure of response caution used in Forstmann et al. (2008):
   # ratio of LBA threshold (b) and starting point noise (A).
   # we have estimates of A and the *distance from* A to b, termed B:
-  # B = b - A.
+  # B = b - A. hence, threshold b = A + B.
   dplyr::mutate(
     threshold = A + B,
     caution = threshold / A,
@@ -168,11 +176,6 @@ Forstmann_LBA <- parameters(
     caution_effect_speed = speed - ((neutral + accuracy) / 2),
     .keep = "unused"
   ) %>%
-  # # for posterity and reference purposes, also keep our original measure of the
-  # # effect of the speed condition specifically on the B parameter
-  # dplyr::rename(
-  #   B_effect_speed = B_Espeed_vs_avg
-  # )
   dplyr::select(-dplyr::all_of("B_Espeed_vs_avg"))
 
 usethis::use_data(Forstmann_LBA, overwrite = TRUE, compress = "xz")
