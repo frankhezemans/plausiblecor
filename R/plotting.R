@@ -410,7 +410,8 @@ plot_population_cor <- function(
       x = x_title
     ) +
     ggplot2::coord_cartesian(
-      xlim = x_axis_limits
+      xlim = x_axis_limits,
+      expand = FALSE
     ) +
     add_theme_elements(plot_text_scaling)
 
