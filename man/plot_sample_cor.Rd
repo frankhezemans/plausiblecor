@@ -10,11 +10,9 @@ plot_sample_cor(
   style = c("dots", "hist"),
   plot_aes = NULL,
   zero_refline_aes = NULL,
-  point_method = c("mean", "median"),
-  interval_width = c(0.5, 0.8, 0.95),
-  interval_method = c("hdci", "qi"),
+  point_interval_args = NULL,
   x_title = ggplot2::waiver(),
-  x_axis_limits = NULL,
+  x_axis_limits = "sample-level correlation",
   plot_text_scaling = 1,
   rng_seed = NULL
 )
@@ -32,27 +30,26 @@ Default is `Inf` (use all draws).}
 
 \item{plot_aes}{A named list of aesthetics, passed to the underlying plotting
 function. Defaults to
-`list(binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress", colour = "#4C4C4C", fill = "#7F7F7F", alpha = 0.75)`
+`list(binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress", colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))`
 if `style == "dots"`, or to
-`list(breaks = ggplot2::waiver(), colour = "#4C4C4C", fill = "#7F7F7F", alpha = 0.75)`
+`list(breaks = ggdist::waiver(), colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))`
 if `style == "hist"`.}
 
 \item{zero_refline_aes}{A named list of aesthetics for the vertical reference
 line at zero (e.g., `linetype`, `linewidth`, `colour`), passed to
 [ggplot2::geom_vline()]. Defaults to
-`list(linetype = "dashed", linewidth = 1.25, colour = "black")`. Set
-to `FALSE` to omit the reference line entirely.}
+`list(linetype = "dashed", linewidth = 0.75)`. Set to `FALSE` to omit
+the reference line entirely.}
 
-\item{point_method}{Character, `"mean"` (default) or `"median"`, indicating
-how to summarize the sample draws.}
+\item{point_interval_args}{A named list that specifies how the point +
+multiple-interval plot should be created. Should include the elements
+`point_method`, which is a string that specifies the point summary
+(e.g., `"mean"`), `interval_method`, which is a string that specifies
+the interval type (e.g., `"hdci"`), and `interval_width`, which is a
+numeric vector specifying the desired interval width(s). Defaults to
+`list(point_method = "mean", interval_method = "hdci", width = c(0.5, 0.8, 0.95))`.}
 
-\item{interval_width}{Numeric vector giving widths of uncertainty intervals
-to display. Default is `c(0.5, 0.8, 0.95)`.}
-
-\item{interval_method}{Character, `"hdci"` (default) for highest-density
-continuous intervals or `"qi"` for quantile intervals.}
-
-\item{x_title}{Label for the x-axis. Defaults to waiver (no label).}
+\item{x_title}{Label for the x-axis. Defaults to `"sample-level correlation"`.}
 
 \item{x_axis_limits}{Numeric vector of length 2 that defines x-axis limits
 to "zoom" into, using [ggplot2::coord_cartesian()]. Alternatively,

@@ -13,7 +13,7 @@ plot_population_cor(
   mean_interval_aes = NULL,
   sample_rug_aes = NULL,
   zero_refline_aes = NULL,
-  x_title = ggplot2::waiver(),
+  x_title = "population-level correlation",
   x_axis_limits = NULL,
   plot_text_scaling = 1,
   rng_seed = NULL
@@ -35,7 +35,7 @@ density traces (e.g., `colour`, `alpha`, `linewidth`), passed to
 \item{mean_aes}{A named list of aesthetics for the mean posterior density
 trace (e.g., `colour`, `alpha`, `linewidth`), passed to
 [ggplot2::geom_line()]. Defaults to
-`list(colour = "#377EB8", linewidth = 1.25)`. Set to
+`list(colour = "#377EB8", linewidth = 1.5)`. Set to
 `FALSE` to omit the mean trace entirely.}
 
 \item{mean_interval_args}{A named list that specifies how an interval for the
@@ -46,7 +46,7 @@ Defaults to `list(width = 0.95, method = "hdci")`.}
 
 \item{mean_interval_aes}{A named list of aesthetics for a light shaded
 background rectangle that represents the requested interval of the
-mean posterior density trace. Arguments are passed to [ggplot2::geom_vline()].
+mean posterior density trace. Arguments are passed to [ggplot2::annotate()].
 Defaults to `list(fill = "#BDD7E7", alpha = 0.4)`.
 Set to `FALSE` to omit the interval entirely.}
 
@@ -62,8 +62,7 @@ line at zero (e.g., `linetype`, `linewidth`, `colour`), passed to
 `list(linetype = "dashed", linewidth = 0.75)`. Set to `FALSE` to omit
 the reference line entirely.}
 
-\item{x_title}{Label for the x-axis. Defaults to [ggplot2::waiver()],
-meaning no label is shown.}
+\item{x_title}{Label for the x-axis. Defaults to `"population-level correlation"`}
 
 \item{x_axis_limits}{Numeric vector of length 2 that defines x-axis limits
 to "zoom" into, using [ggplot2::coord_cartesian()]. Alternatively,
