@@ -16,22 +16,23 @@
 #'        [ggdist::stat_histinterval()].
 #' @param plot_aes A named list of aesthetics, passed to the underlying plotting
 #'        function. Defaults to
-#'        `list(binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress", colour = "#4C4C4C", fill = "#7F7F7F", alpha = 0.75)`
+#'        `list(binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress", colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))`
 #'        if `style == "dots"`, or to
-#'        `list(breaks = ggplot2::waiver(), colour = "#4C4C4C", fill = "#7F7F7F", alpha = 0.75)`
+#'        `list(breaks = ggdist::waiver(), colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))`
 #'        if `style == "hist"`.
 #' @param zero_refline_aes A named list of aesthetics for the vertical reference
 #'        line at zero (e.g., `linetype`, `linewidth`, `colour`), passed to
 #'        [ggplot2::geom_vline()]. Defaults to
-#'        `list(linetype = "dashed", linewidth = 1.25, colour = "black")`. Set
-#'        to `FALSE` to omit the reference line entirely.
-#' @param point_method Character, `"mean"` (default) or `"median"`, indicating
-#'        how to summarize the sample draws.
-#' @param interval_width Numeric vector giving widths of uncertainty intervals
-#'        to display. Default is `c(0.5, 0.8, 0.95)`.
-#' @param interval_method Character, `"hdci"` (default) for highest-density
-#'        continuous intervals or `"qi"` for quantile intervals.
-#' @param x_title Label for the x-axis. Defaults to waiver (no label).
+#'        `list(linetype = "dashed", linewidth = 0.75)`. Set to `FALSE` to omit
+#'        the reference line entirely.
+#' @param point_interval_args A named list that specifies how the point +
+#'        multiple-interval plot should be created. Should include the elements
+#'        `point_method`, which is a string that specifies the point summary
+#'        (e.g., `"mean"`), `interval_method`, which is a string that specifies
+#'        the interval type (e.g., `"hdci"`), and `interval_width`, which is a
+#'        numeric vector specifying the desired interval width(s). Defaults to
+#'        `list(point_method = "mean", interval_method = "hdci", width = c(0.5, 0.8, 0.95))`.
+#' @param x_title Label for the x-axis. Defaults to `"sample-level correlation"`.
 #' @param x_axis_limits Numeric vector of length 2 that defines x-axis limits
 #'        to "zoom" into, using [ggplot2::coord_cartesian()]. Alternatively,
 #'        `NULL` (default) retains the full scale.
@@ -57,18 +58,14 @@ plot_sample_cor <- function(
     style = c("dots", "hist"),
     plot_aes = NULL,
     zero_refline_aes = NULL,
-    point_method = c("mean", "median"),
-    interval_width = c(0.5, 0.8, 0.95),
-    interval_method = c("hdci", "qi"),
+    point_interval_args = NULL,
     x_title = ggplot2::waiver(),
-    x_axis_limits = NULL,
+    x_axis_limits = "sample-level correlation",
     plot_text_scaling = 1,
     rng_seed = NULL
 ) {
 
   style <- rlang::arg_match(arg = style)
-  point_method <- rlang::arg_match(arg = point_method)
-  interval_method <- rlang::arg_match(arg = interval_method)
 
   validate_column_inputs(
     col_names = c(".draw", "r"),
@@ -94,7 +91,7 @@ plot_sample_cor <- function(
 
   if (!isFALSE(zero_refline_aes)) {
     zero_refline_aes <- zero_refline_aes %||% list(
-      linetype = "dashed", linewidth = 1.25, colour = "black"
+      linetype = "dashed", linewidth = 0.75, colour = "black"
     )
     validate_geom_args(
       aes_list = zero_refline_aes,
@@ -109,10 +106,17 @@ plot_sample_cor <- function(
       )
   }
 
+  point_interval_args <- point_interval_args %||% list(
+    point_method = "mean",
+    interval_method = "hdci", interval_width = c(0.5, 0.8, 0.95)
+  )
+
   if (style == "dots") {
     plot_aes <- plot_aes %||% list(
       binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress",
-      colour = "#4C4C4C", fill = "#7F7F7F", alpha = 0.75
+      colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75,
+      point_alpha = 1, point_size = 3,
+      interval_alpha = 1, interval_size_range = c(1.25, 2.5)
     )
     validate_geom_args(
       aes_list = plot_aes,
@@ -124,14 +128,19 @@ plot_sample_cor <- function(
     result <- result +
       rlang::exec(
         .fn = ggdist::stat_dotsinterval,
-        point_interval = paste0(point_method, "_", interval_method),
-        .width = interval_width,
+        point_interval = paste0(
+          point_interval_args[["point_method"]], "_",
+          point_interval_args[["interval_method"]]
+        ),
+        .width = point_interval_args[["interval_width"]],
         !!!plot_aes
       )
   } else {
     plot_aes <- plot_aes %||% list(
       breaks = ggdist::waiver(),
-      colour = "#4C4C4C", fill = "#7F7F7F", alpha = 0.75
+      colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75,
+      point_alpha = 1, point_size = 3,
+      interval_alpha = 1, interval_size_range = c(1.25, 2.5)
     )
     validate_geom_args(
       aes_list = plot_aes,
@@ -143,8 +152,11 @@ plot_sample_cor <- function(
     result <- result +
       rlang::exec(
         .fn = ggdist::stat_histinterval,
-        point_interval = paste0(point_method, "_", interval_method),
-        .width = interval_width,
+        point_interval = paste0(
+          point_interval_args[["point_method"]], "_",
+          point_interval_args[["interval_method"]]
+        ),
+        .width = point_interval_args[["interval_width"]],
         !!!plot_aes
       )
   }
@@ -181,7 +193,7 @@ plot_sample_cor <- function(
 #' @param mean_aes A named list of aesthetics for the mean posterior density
 #'        trace (e.g., `colour`, `alpha`, `linewidth`), passed to
 #'        [ggplot2::geom_line()]. Defaults to
-#'        `list(colour = "#377EB8", linewidth = 1.25)`. Set to
+#'        `list(colour = "#377EB8", linewidth = 1.5)`. Set to
 #'        `FALSE` to omit the mean trace entirely.
 #' @param mean_interval_args A named list that specifies how an interval for the
 #'        mean posterior density is computed. Should include the elements `width`,
@@ -190,7 +202,7 @@ plot_sample_cor <- function(
 #'        Defaults to `list(width = 0.95, method = "hdci")`.
 #' @param mean_interval_aes A named list of aesthetics for a light shaded
 #'        background rectangle that represents the requested interval of the
-#'        mean posterior density trace. Arguments are passed to [ggplot2::geom_vline()].
+#'        mean posterior density trace. Arguments are passed to [ggplot2::annotate()].
 #'        Defaults to `list(fill = "#BDD7E7", alpha = 0.4)`.
 #'        Set to `FALSE` to omit the interval entirely.
 #' @param sample_rug_aes A named list of aesthetics for "rug" plot of the sample
@@ -203,8 +215,7 @@ plot_sample_cor <- function(
 #'        [ggplot2::geom_vline()]. Defaults to
 #'        `list(linetype = "dashed", linewidth = 0.75)`. Set to `FALSE` to omit
 #'        the reference line entirely.
-#' @param x_title Label for the x-axis. Defaults to [ggplot2::waiver()],
-#'        meaning no label is shown.
+#' @param x_title Label for the x-axis. Defaults to `"population-level correlation"`
 #' @param x_axis_limits Numeric vector of length 2 that defines x-axis limits
 #'        to "zoom" into, using [ggplot2::coord_cartesian()]. Alternatively,
 #'        `NULL` (default) retains the full scale.
@@ -245,7 +256,7 @@ plot_population_cor <- function(
     mean_interval_aes = NULL,
     sample_rug_aes = NULL,
     zero_refline_aes = NULL,
-    x_title = ggplot2::waiver(),
+    x_title = "population-level correlation",
     x_axis_limits = NULL,
     plot_text_scaling = 1,
     rng_seed = NULL
@@ -386,7 +397,7 @@ plot_population_cor <- function(
 
   if (!isFALSE(mean_aes)) {
     mean_aes <- mean_aes %||% list(
-      colour = "#377EB8", linewidth = 1.25
+      colour = "#377EB8", linewidth = 1.5
     )
     validate_geom_args(
       aes_list = mean_aes,
