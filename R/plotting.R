@@ -59,8 +59,8 @@ plot_sample_cor <- function(
     plot_aes = NULL,
     zero_refline_aes = NULL,
     point_interval_args = NULL,
-    x_title = ggplot2::waiver(),
-    x_axis_limits = "sample-level correlation",
+    x_title = "sample-level correlation",
+    x_axis_limits = NULL,
     plot_text_scaling = 1,
     rng_seed = NULL
 ) {
