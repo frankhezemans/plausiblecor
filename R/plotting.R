@@ -168,6 +168,11 @@ plot_sample_cor <- function(
     ggplot2::coord_cartesian(
       xlim = x_axis_limits
     ) +
+    ggplot2::scale_x_continuous(
+      expand = ggplot2::expansion(
+        mult = 0
+      )
+    ) +
     add_theme_elements(plot_text_scaling)
 
   return(result)
