@@ -91,8 +91,8 @@ emc_forstmann <- EMC2::make_emc(
 # to run, depending on the capabilities of your machine
 fit_forstmann <- EMC2::fit(
   emc = emc_forstmann,
-  iter = 1500,
-  fileName = "data-raw/Forstmann_EMC2_fit.RData"
+  iter = 1500#,
+  # fileName = "data-raw/Forstmann_EMC2_fit.RData"
 )
 
 # diagnostics for group-level parameters:
@@ -139,10 +139,7 @@ Forstmann_LBA <- parameters(
     B_speed = exp(B + (1/2) * B_Espeed_vs_avg),
     B_neutral = exp(B - (1/4) * B_Espeed_vs_avg + (1/2) * B_Eneut_vs_acc),
     B_accuracy = exp(B - (1/4) * B_Espeed_vs_avg - (1/2) * B_Eneut_vs_acc),
-  ) %>%
-  # remove now-redundant parameters
-  dplyr::select(
-    -dplyr::all_of(c("B", "B_Eneut_vs_acc"))
+    .keep = "unused"
   ) %>%
   # pivot in long format by speed manipulation
   tidyr::pivot_longer(
@@ -175,7 +172,6 @@ Forstmann_LBA <- parameters(
   dplyr::mutate(
     caution_effect_speed = speed - ((neutral + accuracy) / 2),
     .keep = "unused"
-  ) %>%
-  dplyr::select(-dplyr::all_of("B_Espeed_vs_avg"))
+  )
 
 usethis::use_data(Forstmann_LBA, overwrite = TRUE, compress = "xz")
