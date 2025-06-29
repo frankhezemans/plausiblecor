@@ -12,30 +12,30 @@ summarise_plausible_cor(
 )
 }
 \arguments{
-\item{.data}{A data frame output from [run_plausible_cor()].}
+\item{.data}{A data frame output from \code{\link[=run_plausible_cor]{run_plausible_cor()}}.}
 
 \item{point_method}{Method used to compute the central tendency of the
-correlation estimate. One of `"mean"` or `"median"`. Default is
-`"mean"`.}
+correlation estimate. One of \code{"mean"} or \code{"median"}. Default is
+\code{"mean"}.}
 
 \item{interval_width}{Numeric vector of desired credible interval widths
-(e.g., `c(0.5, 0.8, 0.95)`). Must be values between 0 and 1.}
+(e.g., \code{c(0.5, 0.8, 0.95)}). Must be values between 0 and 1.}
 
-\item{interval_method}{Method used for computing intervals. One of `"hdci"`
+\item{interval_method}{Method used for computing intervals. One of \code{"hdci"}
 (highest-density continuous interval, a.k.a. shortest probability
-interval) or `"qi"` (quantile interval). Default is `"hdci"`.}
+interval) or \code{"qi"} (quantile interval). Default is \code{"hdci"}.}
 }
 \value{
 A tibble with one row per summary type ("sample" and "posterior"),
-        and credible interval width, containing:
-  \item{type}{Whether the row corresponds to the sample-based or
-        posterior-based summary}
-  \item{mean / median}{Point estimate of the correlation coefficient}
-  \item{lower / upper}{Credible interval bounds for each `interval_width`}
-  \item{p_dir}{Directional probability (proportion of mass > 0 or < 0)}
+and credible interval width, containing:
+\item{type}{Whether the row corresponds to the sample-based or
+posterior-based summary}
+\item{mean / median}{Point estimate of the correlation coefficient}
+\item{lower / upper}{Credible interval bounds for each \code{interval_width}}
+\item{p_dir}{Directional probability (proportion of mass > 0 or < 0)}
 }
 \description{
-Takes the output of [run_plausible_cor()] and summarises the distribution of
+Takes the output of \code{\link[=run_plausible_cor]{run_plausible_cor()}} and summarises the distribution of
 plausible correlation values at both the sample level (across MCMC samples)
 and the population level (via the mean posterior density across MCMC
 samples).

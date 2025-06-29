@@ -5,16 +5,18 @@
 \alias{Forstmann_fMRI}
 \title{Forstmann et al. (2008) fMRI contrasts}
 \format{
-## `Forstmann_fMRI`
+\subsection{\code{Forstmann_fMRI}}{
+
 A data frame with 19 rows and 3 columns:
 \describe{
-  \item{subjects}{Factor variable: de-identified participant ID codes.}
-  \item{striatum}{Numeric variable: percentage BOLD signal change in the right caudate nucleus.}
-  \item{pre_sma}{Numeric variable: percentage BOLD signal change in the right pre-SMA.}
+\item{subjects}{Factor variable: de-identified participant ID codes.}
+\item{striatum}{Numeric variable: percentage BOLD signal change in the right caudate nucleus.}
+\item{pre_sma}{Numeric variable: percentage BOLD signal change in the right pre-SMA.}
+}
 }
 }
 \source{
-<https://osf.io/download/f7553/>
+\url{https://osf.io/download/f7553/}
 }
 \usage{
 Forstmann_fMRI
@@ -29,30 +31,30 @@ striatum (caudate nucleus) and the right pre-supplementary motor area
 The data were collected while participants performed a speeded perceptual
 decision-making task. On each trial, participants judged whether a cloud of
 moving dots appeared to move to the left or to the right. Before each trial,
-an **instructional cue** indicated the emphasis for that trial: either to
-respond as **quickly** as possible (speed condition), as **accurately** as
-possible (accuracy condition), or to adopt a **balanced** speed–accuracy
+an \strong{instructional cue} indicated the emphasis for that trial: either to
+respond as \strong{quickly} as possible (speed condition), as \strong{accurately} as
+possible (accuracy condition), or to adopt a \strong{balanced} speed–accuracy
 trade-off (neutral condition). These cues manipulated response caution on a
 trial-by-trial basis.
 
 The fMRI contrasts reflect results from a group-level conjunction analysis
-that identified voxels more active in both the *speed > accuracy* and *speed > neutral*
+that identified voxels more active in both the \emph{speed > accuracy} and \emph{speed > neutral}
 contrasts, using a cluster-level correction for multiple comparisons at
-*P* < 0.001. Brain regions of interest were thus **functionally defined** based on
+\emph{P} < 0.001. Brain regions of interest were thus \strong{functionally defined} based on
 this contrast-conjunction, and included contiguous voxel clusters in the
 right anterior striatum and right pre-SMA that exceeded the critical z-threshold.
 
 To compute the percentage signal change, the time course of the BOLD response
 was extracted from the activated voxel clusters in each region for each participant.
 The response was measured relative to a baseline defined by null events and
-averaged across the 4–8 second window following presentation of the **instructional cue**.
+averaged across the 4–8 second window following presentation of the \strong{instructional cue}.
 These values reflect increased neural activation in the speed condition relative
 to both the neutral and accuracy conditions.
 }
 \references{
 Forstmann, B. U., Dutilh, G., Brown, S., Neumann, J., von Cramon, D. Y.,
 Ridderinkhof, K. R., & Wagenmakers, E.-J. (2008). Striatum and pre-SMA
-facilitate decision-making under time pressure. *Proceedings of the National
-Academy of Sciences*, 105(45), 17538–17542. \doi{10.1073/pnas.0805903105}
+facilitate decision-making under time pressure. \emph{Proceedings of the National
+Academy of Sciences}, 105(45), 17538–17542. \doi{10.1073/pnas.0805903105}
 }
 \keyword{datasets}

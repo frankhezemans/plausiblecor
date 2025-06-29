@@ -21,7 +21,7 @@ represents a unique combination of MCMC draw, subject, and
 parameter value.}
 
 \item{covariate_data}{Optional data frame containing covariate data (if not
-in `mcmc_data`). Should contain one row per participant.}
+in \code{mcmc_data}). Should contain one row per participant.}
 
 \item{draw_id}{String denoting the column with MCMC sample IDs.}
 
@@ -36,27 +36,27 @@ parameter.}
 correlation coefficient. Currently ignored (fixed to "pearson").}
 
 \item{posterior_args}{Named list of arguments passed to
-[posterior_rho_updf()], which controls how the unnormalised posterior
+\code{\link[=posterior_rho_updf]{posterior_rho_updf()}}, which controls how the unnormalised posterior
 density function is computed for each Pearson correlation coefficient.
 The following arguments can be included:
-* `kappa` Numeric value controlling the "concentration" of the
-stretched beta prior on the correlation coefficient. Default is `1`,
+* \code{kappa} Numeric value controlling the "concentration" of the
+stretched beta prior on the correlation coefficient. Default is \code{1},
 resulting in a uniform prior.
-* `n_bins` Integer denoting the number of bins ("resolution") used
+* \code{n_bins} Integer denoting the number of bins ("resolution") used
 for the discretised grid of correlation values, for which the
-unnormalised posterior density values are computed. Default is `1e3`.
-* `max_iter` Integer denoting the maximum number of iterations
+unnormalised posterior density values are computed. Default is \code{1e3}.
+* \code{max_iter} Integer denoting the maximum number of iterations
 (attempts) to obtain a posterior density function for a given MCMC
-sample. Default is `1e7`.
-* `...` additional arguments passed forward to [stats::approxfun()].}
+sample. Default is \code{1e7}.
+* \code{...} additional arguments passed forward to \code{\link[stats:approxfun]{stats::approxfun()}}.}
 }
 \value{
-A [tibble::tbl_df-class] with one row per MCMC sample containing:
-  \item{.draw}{The MCMC sample ID}
-  \item{r}{Pearson correlation coefficient}
-  \item{n}{Number of complete observations used for correlation calculation}
-  \item{posterior_updf}{Function object for evaluating the unnormalised
-        posterior density at any correlation value between -1 and 1}
+A \link[tibble:tbl_df-class]{tibble::tbl_df} with one row per MCMC sample containing:
+\item{.draw}{The MCMC sample ID}
+\item{r}{Pearson correlation coefficient}
+\item{n}{Number of complete observations used for correlation calculation}
+\item{posterior_updf}{Function object for evaluating the unnormalised
+posterior density at any correlation value between -1 and 1}
 }
 \description{
 Implements a Bayesian approach for exploring individual differences in a
@@ -73,34 +73,34 @@ subjects).
 \details{
 This function implements the approach described by Ly et al. (2017) for
 exploring individual differences in cognitive-model-based neuroscience:
-
-1. First, it computes the Pearson correlation between an estimated model
-   parameters and observed covariate separately for each MCMC sample,
-   resulting in a set of plausible correlation values for the given sample
-   of subjects.
-   This handles uncertainty in the estimation of individual subjects'
-   model parameters, but does not account for uncertainty in generalising
-   from the sample to the population.
-
-2. Second, it calculates the posterior density function for each correlation
-   using the analytical solution derived by Ly et al. (2018), resulting in
-   a set of plausible posterior distributions of the correlation.
-   This handles uncertainty in generalizing from the sample to the
-   population, and is therefore suitable for inferences about the
-   correlation coefficient in the population.
+\enumerate{
+\item First, it computes the Pearson correlation between an estimated model
+parameters and observed covariate separately for each MCMC sample,
+resulting in a set of plausible correlation values for the given sample
+of subjects.
+This handles uncertainty in the estimation of individual subjects'
+model parameters, but does not account for uncertainty in generalising
+from the sample to the population.
+\item Second, it calculates the posterior density function for each correlation
+using the analytical solution derived by Ly et al. (2018), resulting in
+a set of plausible posterior distributions of the correlation.
+This handles uncertainty in generalizing from the sample to the
+population, and is therefore suitable for inferences about the
+correlation coefficient in the population.
+}
 
 The function requires at least 3 valid observations per MCMC sample and
 filters out any correlation values that are not finite or outside the valid
-range of [-1, 1].
+range of \link{-1, 1}.
 }
 \references{
 Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,
 & Matzke, D. (2017). A flexible and efficient hierarchical bayesian approach
 to the exploration of individual differences in cognitive‐model‐based
-neuroscience. *Computational models of brain and behavior*, 467-479.
+neuroscience. \emph{Computational models of brain and behavior}, 467-479.
 https://doi.org/10.1002/9781119159193.ch34
 
 Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Analytic posteriors for
-Pearson's correlation coefficient. *Statistica Neerlandica*, 72, 4–13.
+Pearson's correlation coefficient. \emph{Statistica Neerlandica}, 72, 4–13.
 https://doi.org/10.1111/stan.12111
 }

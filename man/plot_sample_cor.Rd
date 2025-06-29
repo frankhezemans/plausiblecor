@@ -18,65 +18,65 @@ plot_sample_cor(
 )
 }
 \arguments{
-\item{.data}{A data frame returned by [run_plausible_cor()], containing at
-least `.draw` and `r` columns.}
+\item{.data}{A data frame returned by \code{\link[=run_plausible_cor]{run_plausible_cor()}}, containing at
+least \code{.draw} and \code{r} columns.}
 
 \item{n_draws}{Integer specifying the maximum number of MCMC draws to plot.
-Default is `Inf` (use all draws).}
+Default is \code{Inf} (use all draws).}
 
-\item{style}{Character, either `"dots"` (default) for a dotplot using
-[ggdist::stat_dotsinterval()] or `"hist"` for a histogram using
-[ggdist::stat_histinterval()].}
+\item{style}{Character, either \code{"dots"} (default) for a dotplot using
+\code{\link[ggdist:stat_dotsinterval]{ggdist::stat_dotsinterval()}} or \code{"hist"} for a histogram using
+\code{\link[ggdist:stat_histinterval]{ggdist::stat_histinterval()}}.}
 
 \item{plot_aes}{A named list of aesthetics, passed to the underlying plotting
 function. Defaults to
-`list(binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress", colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))`
-if `style == "dots"`, or to
-`list(breaks = ggdist::waiver(), colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))`
-if `style == "hist"`.}
+\code{list(binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress", colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))}
+if \code{style == "dots"}, or to
+\code{list(breaks = ggdist::waiver(), colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))}
+if \code{style == "hist"}.}
 
 \item{zero_refline_aes}{A named list of aesthetics for the vertical reference
-line at zero (e.g., `linetype`, `linewidth`, `colour`), passed to
-[ggplot2::geom_vline()]. Defaults to
-`list(linetype = "dashed", linewidth = 0.75)`. Set to `FALSE` to omit
+line at zero (e.g., \code{linetype}, \code{linewidth}, \code{colour}), passed to
+\code{\link[ggplot2:geom_abline]{ggplot2::geom_vline()}}. Defaults to
+\code{list(linetype = "dashed", linewidth = 0.75)}. Set to \code{FALSE} to omit
 the reference line entirely.}
 
 \item{point_interval_args}{A named list that specifies how the point +
 multiple-interval plot should be created. Should include the elements
-`point_method`, which is a string that specifies the point summary
-(e.g., `"mean"`), `interval_method`, which is a string that specifies
-the interval type (e.g., `"hdci"`), and `interval_width`, which is a
+\code{point_method}, which is a string that specifies the point summary
+(e.g., \code{"mean"}), \code{interval_method}, which is a string that specifies
+the interval type (e.g., \code{"hdci"}), and \code{interval_width}, which is a
 numeric vector specifying the desired interval width(s). Defaults to
-`list(point_method = "mean", interval_method = "hdci", width = c(0.5, 0.8, 0.95))`.}
+\code{list(point_method = "mean", interval_method = "hdci", width = c(0.5, 0.8, 0.95))}.}
 
-\item{x_title}{Label for the x-axis. Defaults to `"sample-level correlation"`.}
+\item{x_title}{Label for the x-axis. Defaults to \code{"sample-level correlation"}.}
 
 \item{x_axis_limits}{Numeric vector of length 2 that defines x-axis limits
-to "zoom" into, using [ggplot2::coord_cartesian()]. Alternatively,
-`NULL` (default) retains the full scale.}
+to "zoom" into, using \code{\link[ggplot2:coord_cartesian]{ggplot2::coord_cartesian()}}. Alternatively,
+\code{NULL} (default) retains the full scale.}
 
 \item{plot_text_scaling}{Numeric scaling factor for axis text and title
-size. Default is `1`.}
+size. Default is \code{1}.}
 
 \item{rng_seed}{Optional integer seed for reproducible sampling of draws.}
 }
 \value{
-A [ggplot2::ggplot()] object.
+A \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}} object.
 }
 \description{
 Visualises the distribution of sample Pearson correlation coefficients
-obtained from [run_plausible_cor()], using either a dotplot or histogram
-style. This function wraps [ggdist::stat_dotsinterval()] or
-[ggdist::stat_histinterval()], providing a quick way to plot uncertainty
+obtained from \code{\link[=run_plausible_cor]{run_plausible_cor()}}, using either a dotplot or histogram
+style. This function wraps \code{\link[ggdist:stat_dotsinterval]{ggdist::stat_dotsinterval()}} or
+\code{\link[ggdist:stat_histinterval]{ggdist::stat_histinterval()}}, providing a quick way to plot uncertainty
 about the sample correlations.
 }
 \details{
-Designed for visualizing the output of [run_plausible_cor()] — a plausible
+Designed for visualizing the output of \code{\link[=run_plausible_cor]{run_plausible_cor()}} — a plausible
 value analysis for correlations between model parameters and covariates.
 
-If `n_draws` is less than the number of available MCMC samples, a random
-subset is selected (optionally with reproducible seeding via `rng_seed`).
+If \code{n_draws} is less than the number of available MCMC samples, a random
+subset is selected (optionally with reproducible seeding via \code{rng_seed}).
 }
 \seealso{
-[run_plausible_cor()], [ggdist::stat_dotsinterval()], [ggdist::stat_histinterval()]
+\code{\link[=run_plausible_cor]{run_plausible_cor()}}, \code{\link[ggdist:stat_dotsinterval]{ggdist::stat_dotsinterval()}}, \code{\link[ggdist:stat_histinterval]{ggdist::stat_histinterval()}}
 }

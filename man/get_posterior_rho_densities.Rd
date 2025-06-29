@@ -7,19 +7,19 @@
 get_posterior_rho_densities(.data, grid_spacing = 0.001)
 }
 \arguments{
-\item{.data}{Data frame output from [run_plausible_cor()].}
+\item{.data}{Data frame output from \code{\link[=run_plausible_cor]{run_plausible_cor()}}.}
 
 \item{grid_spacing}{The step size for the grid of correlation values to
 evaluate.}
 }
 \value{
 A data frame where each row corresponds to one density value for a
-        given posterior density function.
+given posterior density function.
 }
 \description{
 Helper function that evaluates each posterior density function in the output
-of [run_plausible_cor()] over a shared grid from -1 to 1. Typical users
+of \code{\link[=run_plausible_cor]{run_plausible_cor()}} over a shared grid from -1 to 1. Typical users
 would not have to call this function, instead relying on
-[summarise_plausible_cor()], [compare_plausible_cors()], and
-[plot_population_cor()].
+\code{\link[=summarise_plausible_cor]{summarise_plausible_cor()}}, \code{\link[=compare_plausible_cors]{compare_plausible_cors()}}, and
+\code{\link[=plot_population_cor]{plot_population_cor()}}.
 }

@@ -7,15 +7,15 @@
 get_mean_posterior_rho(.data)
 }
 \arguments{
-\item{.data}{Data frame output from [get_posterior_rho_densities()].}
+\item{.data}{Data frame output from \code{\link[=get_posterior_rho_densities]{get_posterior_rho_densities()}}.}
 }
 \value{
-A tibble with columns `x` (grid points) and `density`
-        (mean posterior density).
+A tibble with columns \code{x} (grid points) and \code{density}
+(mean posterior density).
 }
 \description{
 Helper function that computes the mean posterior density across MCMC samples,
 based on the evaluated densities on a shared grid. Typical users would not
-have to call this function, instead relying on [summarise_plausible_cor()],
-[compare_plausible_cors()], and [plot_population_cor()].
+have to call this function, instead relying on \code{\link[=summarise_plausible_cor]{summarise_plausible_cor()}},
+\code{\link[=compare_plausible_cors]{compare_plausible_cors()}}, and \code{\link[=plot_population_cor]{plot_population_cor()}}.
 }

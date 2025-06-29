@@ -237,7 +237,7 @@ plot_sample_cor <- function(
 #'   capturing both parameter uncertainty and population variability.
 #' - The mean posterior density across all draws, offering a summary of the
 #'   plausible population-level correlation.
-#' - An optional vertical reference line at `r = 0` to facilitate visual
+#' - An optional vertical reference line at 0 to facilitate visual
 #'   interpretation.
 #'
 #' Subsampling with `n_draws` is used to limit visual clutter when many MCMC

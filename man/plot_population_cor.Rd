@@ -20,86 +20,87 @@ plot_population_cor(
 )
 }
 \arguments{
-\item{.data}{A data frame returned by [run_plausible_cor()], containing at
-least `.draw`, `r`, and `posterior_updf` columns.}
+\item{.data}{A data frame returned by \code{\link[=run_plausible_cor]{run_plausible_cor()}}, containing at
+least \code{.draw}, \code{r}, and \code{posterior_updf} columns.}
 
 \item{n_draws}{Integer specifying the maximum number of MCMC draws to plot.
-Defaults to `500` to avoid overplotting of density traces.}
+Defaults to \code{500} to avoid overplotting of density traces.}
 
 \item{trace_aes}{A named list of aesthetics for the individual posterior
-density traces (e.g., `colour`, `alpha`, `linewidth`), passed to
-[ggplot2::geom_line()]. Defaults to
-`list(colour = "#4C4C4C", alpha = 0.1, linewidth = 0.1)`. Set to
-`FALSE` to omit these lines entirely.}
+density traces (e.g., \code{colour}, \code{alpha}, \code{linewidth}), passed to
+\code{\link[ggplot2:geom_path]{ggplot2::geom_line()}}. Defaults to
+\code{list(colour = "#4C4C4C", alpha = 0.1, linewidth = 0.1)}. Set to
+\code{FALSE} to omit these lines entirely.}
 
 \item{mean_aes}{A named list of aesthetics for the mean posterior density
-trace (e.g., `colour`, `alpha`, `linewidth`), passed to
-[ggplot2::geom_line()]. Defaults to
-`list(colour = "#377EB8", linewidth = 1.5)`. Set to
-`FALSE` to omit the mean trace entirely.}
+trace (e.g., \code{colour}, \code{alpha}, \code{linewidth}), passed to
+\code{\link[ggplot2:geom_path]{ggplot2::geom_line()}}. Defaults to
+\code{list(colour = "#377EB8", linewidth = 1.5)}. Set to
+\code{FALSE} to omit the mean trace entirely.}
 
 \item{mean_interval_args}{A named list that specifies how an interval for the
-mean posterior density is computed. Should include the elements `width`,
-which is a single numeric value of the desired interval width, and `method`,
+mean posterior density is computed. Should include the elements \code{width},
+which is a single numeric value of the desired interval width, and \code{method},
 which is a character specifying which interval type to compute.
-Defaults to `list(width = 0.95, method = "hdci")`.}
+Defaults to \code{list(width = 0.95, method = "hdci")}.}
 
 \item{mean_interval_aes}{A named list of aesthetics for a light shaded
 background rectangle that represents the requested interval of the
-mean posterior density trace. Arguments are passed to [ggplot2::annotate()].
-Defaults to `list(fill = "#BDD7E7", alpha = 0.4)`.
-Set to `FALSE` to omit the interval entirely.}
+mean posterior density trace. Arguments are passed to \code{\link[ggplot2:annotate]{ggplot2::annotate()}}.
+Defaults to \code{list(fill = "#BDD7E7", alpha = 0.4)}.
+Set to \code{FALSE} to omit the interval entirely.}
 
 \item{sample_rug_aes}{A named list of aesthetics for "rug" plot of the sample
 correlation coefficients on which the individual posterior density
-traces are based. Arguments are passed to [ggplot2::geom_rug()].
-Defaults to `list(alpha = 0.1, linewidth = 0.1, length = grid::unit(0.03, "npc"))`.
-Set to `FALSE` to omit the rug plot entirely.}
+traces are based. Arguments are passed to \code{\link[ggplot2:geom_rug]{ggplot2::geom_rug()}}.
+Defaults to \code{list(alpha = 0.1, linewidth = 0.1, length = grid::unit(0.03, "npc"))}.
+Set to \code{FALSE} to omit the rug plot entirely.}
 
 \item{zero_refline_aes}{A named list of aesthetics for the vertical reference
-line at zero (e.g., `linetype`, `linewidth`, `colour`), passed to
-[ggplot2::geom_vline()]. Defaults to
-`list(linetype = "dashed", linewidth = 0.75)`. Set to `FALSE` to omit
+line at zero (e.g., \code{linetype}, \code{linewidth}, \code{colour}), passed to
+\code{\link[ggplot2:geom_abline]{ggplot2::geom_vline()}}. Defaults to
+\code{list(linetype = "dashed", linewidth = 0.75)}. Set to \code{FALSE} to omit
 the reference line entirely.}
 
-\item{x_title}{Label for the x-axis. Defaults to `"population-level correlation"`}
+\item{x_title}{Label for the x-axis. Defaults to \code{"population-level correlation"}}
 
 \item{x_axis_limits}{Numeric vector of length 2 that defines x-axis limits
-to "zoom" into, using [ggplot2::coord_cartesian()]. Alternatively,
-`NULL` (default) retains the full scale.}
+to "zoom" into, using \code{\link[ggplot2:coord_cartesian]{ggplot2::coord_cartesian()}}. Alternatively,
+\code{NULL} (default) retains the full scale.}
 
 \item{plot_text_scaling}{Numeric scaling factor for axis text and title
-size. Default is `1`.}
+size. Default is \code{1}.}
 
 \item{rng_seed}{Optional integer seed to ensure reproducible sampling of
 posterior draws.}
 }
 \value{
-A [ggplot2::ggplot] object.
+A \link[ggplot2:ggplot]{ggplot2::ggplot} object.
 }
 \description{
 Visualises density traces of posterior distributions of Pearson correlation
-coefficients obtained from [run_plausible_cor()], along with the mean
+coefficients obtained from \code{\link[=run_plausible_cor]{run_plausible_cor()}}, along with the mean
 posterior density across all MCMC samples.
 }
 \details{
 This function plots the plausible posterior distributions of the Pearson
-correlation coefficient obtained via [run_plausible_cor()]. It displays:
+correlation coefficient obtained via \code{\link[=run_plausible_cor]{run_plausible_cor()}}. It displays:
+\itemize{
+\item Density traces for a subset (\code{n_draws}) of individual posterior draws,
+capturing both parameter uncertainty and population variability.
+\item The mean posterior density across all draws, offering a summary of the
+plausible population-level correlation.
+\item An optional vertical reference line at 0 to facilitate visual
+interpretation.
+}
 
-- Density traces for a subset (`n_draws`) of individual posterior draws,
-  capturing both parameter uncertainty and population variability.
-- The mean posterior density across all draws, offering a summary of the
-  plausible population-level correlation.
-- An optional vertical reference line at `r = 0` to facilitate visual
-  interpretation.
-
-Subsampling with `n_draws` is used to limit visual clutter when many MCMC
+Subsampling with \code{n_draws} is used to limit visual clutter when many MCMC
 draws are available. However, the mean posterior density is always computed
 from the full set of draws.
 
 Each plotted layer can be customized using a named list of aesthetic values,
-or disabled entirely by passing `FALSE`.
+or disabled entirely by passing \code{FALSE}.
 }
 \seealso{
-[run_plausible_cor()]
+\code{\link[=run_plausible_cor]{run_plausible_cor()}}
 }

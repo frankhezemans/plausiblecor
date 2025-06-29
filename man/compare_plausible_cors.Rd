@@ -15,48 +15,48 @@ compare_plausible_cors(
 )
 }
 \arguments{
-\item{x, y}{Data frames returned by [run_plausible_cors()], each containing
-the columns `.draw`, `r`, and `posterior_updf`.}
+\item{x, y}{Data frames returned by \code{\link[=run_plausible_cors]{run_plausible_cors()}}, each containing
+the columns \code{.draw}, \code{r}, and \code{posterior_updf}.}
 
 \item{point_method}{Character string specifying the summary point estimate
-of the delta distribution. Either `"mean"` (default) or `"median"`.}
+of the delta distribution. Either \code{"mean"} (default) or \code{"median"}.}
 
 \item{interval_width}{Numeric vector of interval widths (between 0 and 1)
 for the uncertainty intervals to be returned. Default is
-`c(0.5, 0.8, 0.95)`.}
+\code{c(0.5, 0.8, 0.95)}.}
 
 \item{interval_method}{Character string specifying the method used to
-compute intervals. Either `"hdci"` (highest-density continuous interval;
-default) or `"qi"` (quantile interval).}
+compute intervals. Either \code{"hdci"} (highest-density continuous interval;
+default) or \code{"qi"} (quantile interval).}
 
 \item{n_samples}{Integer indicating how many quantiles to draw per posterior
-distribution when `comparison_method = "population"`. Default is 1.}
+distribution when \code{comparison_method = "population"}. Default is 1.}
 
 \item{rng_seed}{Optional numeric vector of length 2 to control the random
-seed for quantile sampling of `x` and `y`, respectively. If `NULL`,
+seed for quantile sampling of \code{x} and \code{y}, respectively. If \code{NULL},
 random seeds will not be set.}
 }
 \value{
-A [tibble::tibble()] containing summary statistics of the difference
- between correlation coefficients.
+A \code{\link[tibble:tibble]{tibble::tibble()}} containing summary statistics of the difference
+between correlation coefficients.
 }
 \description{
 Compares the posterior distributions of plausible correlation values, as
-returned by two separate calls to [run_plausible_cors()]. Uses two methods
-methods for defining the distribution of the difference: a **sample-based**
+returned by two separate calls to \code{\link[=run_plausible_cors]{run_plausible_cors()}}. Uses two methods
+methods for defining the distribution of the difference: a \strong{sample-based}
 comparison, which subtracts the correlation values from matching MCMC
-samples, and a **population-based** comparison, which draws quantiles from
+samples, and a \strong{population-based} comparison, which draws quantiles from
 each posterior distribution (accounting for population uncertainty) before
 computing the difference.
 }
 \details{
 For the sample-based comparison, the function computes the difference in the
-Pearson correlation coefficient for each `.draw` shared between the two data
+Pearson correlation coefficient for each \code{.draw} shared between the two data
 frames.
 
 For the population-based comparison, the function draws quantile value(s)
 from the posterior distribution of each Pearson correlation (as defined by
-`posterior_updf`) and computes the difference. This allows for comparison at
+\code{posterior_updf}) and computes the difference. This allows for comparison at
 the population level rather than the specific sample of subjects.
 
 This function was adapted from code previously released with the Dynamic
@@ -66,10 +66,10 @@ Models of Choice toolbox (Heathcote et al., 2019).
 Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,
 & Matzke, D. (2017). A flexible and efficient hierarchical bayesian approach
 to the exploration of individual differences in cognitive‐model‐based
-neuroscience. *Computational models of brain and behavior*, 467-479.
+neuroscience. \emph{Computational models of brain and behavior}, 467-479.
 https://doi.org/10.1002/9781119159193.ch34
 
 Heathcote, A., Lin, Y.S., Reynolds, A., Strickland, L., Gretton, M., &
-Matzke, D. (2019). Dynamic models of choice. *Behavior Research Methods*,
+Matzke, D. (2019). Dynamic models of choice. \emph{Behavior Research Methods},
 51, 961-985. https://doi.org/10.3758/s13428-018-1067-y
 }

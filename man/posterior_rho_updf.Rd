@@ -9,26 +9,26 @@ posterior_rho_updf(r, n, kappa = 1, n_bins = 1000, max_iter = 1e+07, ...)
 }
 \arguments{
 \item{r}{Numeric value. The observed sample correlation coefficient, must be
-between `-1` and `1`.}
+between \code{-1} and \code{1}.}
 
-\item{n}{Numeric value. The sample size, must be at least `3`.}
+\item{n}{Numeric value. The sample size, must be at least \code{3}.}
 
 \item{kappa}{Numeric value. Parameter controlling the "concentration" of the
 stretched beta prior on the correlation coefficient (see details
-below). Default is `1`, resulting in a uniform prior.}
+below). Default is \code{1}, resulting in a uniform prior.}
 
 \item{n_bins}{Integer. Number of grid points for the approximation, default
-is `1000`.}
+is \code{1000}.}
 
 \item{max_iter}{Integer. Maximum number of iterations (attempts) to solve
 generalised hypergeometric functions that are necessary to compute
-the posterior density. Default is `1e7`. See details.}
+the posterior density. Default is \code{1e7}. See details.}
 
-\item{...}{Additional arguments passed to [stats::approxfun()].}
+\item{...}{Additional arguments passed to \code{\link[stats:approxfun]{stats::approxfun()}}.}
 }
 \value{
 A function that evaluates the unnormalized posterior density at any
-        correlation value between `-1` and `1`.
+correlation value between \code{-1} and \code{1}.
 }
 \description{
 This function calculates the unnormalised posterior density for Pearson's
@@ -40,8 +40,8 @@ value between -1 and 1.
 The unnormalised probability density of the posterior distribution of the
 correlation coefficient is computed for a discretised grid of values. Then,
 linear interpolation between these density values is used to construct an
-approximation to the unnormalised probability density *function* of the
-posterior, using [stats::approxfun()].
+approximation to the unnormalised probability density \emph{function} of the
+posterior, using \code{\link[stats:approxfun]{stats::approxfun()}}.
 
 The discrete grid of correlation values is set adaptively, so that there are
 many estimates of the density near the posterior mode (i.e., the observed
@@ -49,17 +49,17 @@ correlation) and near the endpoints of +1 and -1.
 
 Computing the posterior density involves several evaluations of the
 generalised hypergeometric function, which is handled internally by
-[hypergeo::genhypergeo()]. In some cases, especially when the observed
-correlation approaches +1 or -1, [hypergeo::genhypergeo()] may need several
+\code{\link[hypergeo:genhypergeo]{hypergeo::genhypergeo()}}. In some cases, especially when the observed
+correlation approaches +1 or -1, \code{\link[hypergeo:genhypergeo]{hypergeo::genhypergeo()}} may need several
 thousand attempts to find the solution. Here, we cautiously set the default
-`max_iter` to `1e7`, but note that the original default in
-[hypergeo::genhypergeo()] is much lower (`2e3`).
+\code{max_iter} to \code{1e7}, but note that the original default in
+\code{\link[hypergeo:genhypergeo]{hypergeo::genhypergeo()}} is much lower (\code{2e3}).
 
 Any undefined or non-finite estimate of the posterior density is treated as
-`NA` and ignored by [stats::approxfun()] when constructing the function.
+\code{NA} and ignored by \code{\link[stats:approxfun]{stats::approxfun()}} when constructing the function.
 
 The prior is a stretched beta distribution with shape parameters alpha =
-beta = 1/kappa, scaled to the interval [-1, 1]. This creates a symmetric
+beta = 1/kappa, scaled to the interval \link{-1, 1}. This creates a symmetric
 distribution centered at zero and its domain stretched to cover the full
 range of the correlation coefficient.
 
@@ -68,10 +68,10 @@ Models of Choice toolbox (Heathcote et al., 2019).
 }
 \references{
 Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Analytic posteriors for
-Pearson's correlation coefficient. *Statistica Neerlandica*, 72, 4–13.
+Pearson's correlation coefficient. \emph{Statistica Neerlandica}, 72, 4–13.
 https://doi.org/10.1111/stan.12111
 
 Heathcote, A., Lin, Y.S., Reynolds, A., Strickland, L., Gretton, M., &
-Matzke, D. (2019). Dynamic models of choice. *Behavior Research Methods*,
+Matzke, D. (2019). Dynamic models of choice. \emph{Behavior Research Methods},
 51, 961-985. https://doi.org/10.3758/s13428-018-1067-y
 }
