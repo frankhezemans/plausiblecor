@@ -4,39 +4,49 @@
 \alias{summarise_plausible_cor}
 \title{Summarise plausible correlation estimates}
 \usage{
-summarise_plausible_cor(
-  .data,
-  point_method = c("mean", "median"),
-  interval_width = c(0.5, 0.8, 0.95),
-  interval_method = c("hdci", "qi")
-)
+summarise_plausible_cor(.data, point_interval_args = NULL, rope_range = NULL)
 }
 \arguments{
 \item{.data}{A data frame output from \code{\link[=run_plausible_cor]{run_plausible_cor()}}.}
 
-\item{point_method}{Method used to compute the central tendency of the
-correlation estimate. One of \code{"mean"} or \code{"median"}. Default is
-\code{"mean"}.}
+\item{point_interval_args}{A named list specifying how the central tendency
+and credible interval(s) should be computed, or \code{NULL} to use defaults.
+Valid elements are: \code{point_method} (character string, either \code{"mean"}
+or \code{"median"} for the point summary), \code{interval_method} (character
+string, either \code{"hdci"} for highest density credible interval or \code{"qi"}
+for quantile interval), and \code{interval_width} (numeric vector with
+values between 0 and 1 specifying the desired interval width(s)).
+Any invalid arguments will be ignored with a warning. Partial
+specification is supported; unspecified elements will use defaults.
+Defaults to
+\code{list(point_method = "mean", interval_method = "hdci", interval_width = 0.95)}.}
 
-\item{interval_width}{Numeric vector of desired credible interval widths
-(e.g., \code{c(0.5, 0.8, 0.95)}). Must be values between 0 and 1.}
-
-\item{interval_method}{Method used for computing intervals. One of \code{"hdci"}
-(highest-density continuous interval, a.k.a. shortest probability
-interval) or \code{"qi"} (quantile interval). Default is \code{"hdci"}.}
+\item{rope_range}{Optional numeric vector of length 2 specifying the lower
+and upper bounds of the region of practical equivalence (ROPE), which
+is used to compute the proportion of the distribution contained within
+the ROPE. Defaults to \code{NULL} in which case the ROPE is ignored. See
+Gignac & Szodorai (2016) for guidance on what constitutes a correlation
+coefficient practically equivalent to null.}
 }
 \value{
-A tibble with one row per summary type ("sample" and "posterior"),
-and credible interval width, containing:
+A \link[tibble:tbl_df-class]{tibble::tbl_df} with one row per summary type
+("sample" and "posterior") and credible interval width, containing:
 \item{type}{Whether the row corresponds to the sample-based or
 posterior-based summary}
 \item{mean / median}{Point estimate of the correlation coefficient}
 \item{lower / upper}{Credible interval bounds for each \code{interval_width}}
+\item{width}{If the length of \code{interval_width} is greater than 1: The width of the credible interval.}
 \item{p_dir}{Directional probability (proportion of mass > 0 or < 0)}
+\item{p_rope}{If specified: The proportion contained within the ROPE.}
 }
 \description{
 Takes the output of \code{\link[=run_plausible_cor]{run_plausible_cor()}} and summarises the distribution of
 plausible correlation values at both the sample level (across MCMC samples)
 and the population level (via the mean posterior density across MCMC
 samples).
+}
+\references{
+Gignac, G. E., & Szodorai, E. T. (2016). Effect size guidelines for
+individual differences researchers. \emph{Personality and individual differences},
+\emph{102}, 74-78. DOI: \href{https://doi.org/10.1016/j.paid.2016.06.069}{10.1016/j.paid.2016.06.069}
 }

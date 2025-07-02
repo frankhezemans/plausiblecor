@@ -7,27 +7,33 @@
 compare_plausible_cors(
   x,
   y,
-  point_method = c("mean", "median"),
-  interval_width = c(0.5, 0.8, 0.95),
-  interval_method = c("hdci", "qi"),
+  point_interval_args = NULL,
+  rope_range = NULL,
   n_samples = 1,
   rng_seed = NULL
 )
 }
 \arguments{
-\item{x, y}{Data frames returned by \code{\link[=run_plausible_cors]{run_plausible_cors()}}, each containing
+\item{x, y}{Data frames returned by \code{\link[=run_plausible_cor]{run_plausible_cor()}}, each containing
 the columns \code{.draw}, \code{r}, and \code{posterior_updf}.}
 
-\item{point_method}{Character string specifying the summary point estimate
-of the delta distribution. Either \code{"mean"} (default) or \code{"median"}.}
+\item{point_interval_args}{A named list specifying how the central tendency
+and credible interval(s) of the difference should be computed, or
+\code{NULL} to use defaults. Valid elements are: \code{point_method}
+(character string, either \code{"mean"} or \code{"median"} for the point summary),
+\code{interval_method} (character string, either \code{"hdci"} for highest
+density credible interval or \code{"qi"} for quantile interval), and
+\code{interval_width} (numeric vector with values between 0 and 1
+specifying the desired interval width(s)).
+Any invalid arguments will be ignored with a warning. Partial
+specification is supported; unspecified elements will use defaults.
+Defaults to
+\code{list(point_method = "mean", interval_method = "hdci", interval_width = 0.95)}.}
 
-\item{interval_width}{Numeric vector of interval widths (between 0 and 1)
-for the uncertainty intervals to be returned. Default is
-\code{c(0.5, 0.8, 0.95)}.}
-
-\item{interval_method}{Character string specifying the method used to
-compute intervals. Either \code{"hdci"} (highest-density continuous interval;
-default) or \code{"qi"} (quantile interval).}
+\item{rope_range}{Optional numeric vector of length 2 specifying the lower
+and upper bounds of the region of practical equivalence (ROPE), which
+is used to compute the proportion of the distribution contained within
+the ROPE. Defaults to \code{NULL} in which case the ROPE is ignored.}
 
 \item{n_samples}{Integer indicating how many quantiles to draw per posterior
 distribution when \code{comparison_method = "population"}. Default is 1.}
@@ -38,11 +44,11 @@ random seeds will not be set.}
 }
 \value{
 A \code{\link[tibble:tibble]{tibble::tibble()}} containing summary statistics of the difference
-between correlation coefficients.
+between correlation coefficients, with the same format as \code{\link[=summarise_plausible_cor]{summarise_plausible_cor()}}.
 }
 \description{
 Compares the posterior distributions of plausible correlation values, as
-returned by two separate calls to \code{\link[=run_plausible_cors]{run_plausible_cors()}}. Uses two methods
+returned by two separate calls to \code{\link[=run_plausible_cor]{run_plausible_cor()}}. Uses two methods
 methods for defining the distribution of the difference: a \strong{sample-based}
 comparison, which subtracts the correlation values from matching MCMC
 samples, and a \strong{population-based} comparison, which draws quantiles from

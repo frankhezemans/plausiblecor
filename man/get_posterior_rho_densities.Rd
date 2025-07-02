@@ -18,8 +18,8 @@ given posterior density function.
 }
 \description{
 Helper function that evaluates each posterior density function in the output
-of \code{\link[=run_plausible_cor]{run_plausible_cor()}} over a shared grid from -1 to 1. Typical users
-would not have to call this function, instead relying on
+of \code{\link[=run_plausible_cor]{run_plausible_cor()}} over a shared grid in the range \eqn{\left[-1, 1\right]}.
+Typical users would not have to call this function, instead relying on
 \code{\link[=summarise_plausible_cor]{summarise_plausible_cor()}}, \code{\link[=compare_plausible_cors]{compare_plausible_cors()}}, and
 \code{\link[=plot_population_cor]{plot_population_cor()}}.
 }

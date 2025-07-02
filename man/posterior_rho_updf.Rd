@@ -58,10 +58,10 @@ thousand attempts to find the solution. Here, we cautiously set the default
 Any undefined or non-finite estimate of the posterior density is treated as
 \code{NA} and ignored by \code{\link[stats:approxfun]{stats::approxfun()}} when constructing the function.
 
-The prior is a stretched beta distribution with shape parameters alpha =
-beta = 1/kappa, scaled to the interval \link{-1, 1}. This creates a symmetric
-distribution centered at zero and its domain stretched to cover the full
-range of the correlation coefficient.
+The prior is a stretched beta distribution with shape parameters
+\eqn{\alpha = \beta = \frac{1}{\kappa}}, scaled to the interval (-1, 1). This
+creates a symmetric distribution centered at zero and its domain stretched to
+cover the full range of the correlation coefficient.
 
 This function was adapted from code previously released with the Dynamic
 Models of Choice toolbox (Heathcote et al., 2019).
