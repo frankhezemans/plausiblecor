@@ -45,10 +45,10 @@
 #' Any undefined or non-finite estimate of the posterior density is treated as
 #' `NA` and ignored by [stats::approxfun()] when constructing the function.
 #'
-#' The prior is a stretched beta distribution with shape parameters alpha =
-#' beta = 1/kappa, scaled to the interval [-1, 1]. This creates a symmetric
-#' distribution centered at zero and its domain stretched to cover the full
-#' range of the correlation coefficient.
+#' The prior is a stretched beta distribution with shape parameters
+#' \eqn{\alpha = \beta = \frac{1}{\kappa}}, scaled to the interval (-1, 1). This
+#' creates a symmetric distribution centered at zero and its domain stretched to
+#' cover the full range of the correlation coefficient.
 #'
 #' This function was adapted from code previously released with the Dynamic
 #' Models of Choice toolbox (Heathcote et al., 2019).
@@ -343,87 +343,6 @@ create_rho_grid <- function(r, n, n_bins) {
   result <- sort(unique(c(
     base_grid, peak_grid
   )))
-
-  return(result)
-
-}
-
-#' Validate inputs for posterior_rho_updf function
-#'
-#' @param r Numeric value. The observed sample correlation coefficient.
-#' @param n Integer The sample size.
-#' @param kappa Numeric value. Parameter controlling the concentration of the
-#'        prior.
-#' @param n_bins Integer. Number of grid points for the approximation.
-#' @param max_iter Integer. Maximum number of iterations (attempts) to solve
-#'        generalised hypergeometric functions.
-#'
-#' @return Named list containing the validated inputs.
-#'
-#' @noRd
-validate_posterior_rho_updf_input <- function(r, n, kappa, n_bins, max_iter) {
-
-  rules <- list(
-    r = list(
-      fun = function(x) abs(x) <= 1,
-      fail_msg = "between -1 and 1 (inclusive)",
-      round = FALSE
-    ),
-    n = list(
-      fun = function(x) x > 2,
-      fail_msg = "greater than 2",
-      round = TRUE
-    ),
-    kappa = list(
-      fun = function(x) x > 0,
-      fail_msg = "that is strictly positive",
-      round = FALSE
-    ),
-    n_bins = list(
-      fun = function(x) x >= 100,
-      fail_msg = "greater than or equal to 100",
-      round = TRUE
-    ),
-    max_iter = list(
-      fun = function(x) x >= 1,
-      fail_msg = "greater than or equal to 1",
-      round = TRUE
-    )
-  )
-
-  process_param <- function(value, name, rule_list = rules) {
-    rule <- rule_list[[name]]
-    if (is.null(rule)) {
-      return(value)
-    }
-    if (
-      length(value) != 1L || !is.numeric(value) || !is.finite(value) ||
-      !rule[["fun"]](value)
-    ) {
-      rlang::abort(
-        message = paste0(
-          "Input '", name, "' must be a single finite value ",
-          rule[["fail_msg"]], "."
-        )
-      )
-    }
-    if (rule[["round"]] && value != round(value)) {
-      value <- round(value)
-      rlang::warn(
-        message = paste0(
-          "Input '", name, "' has been rounded to the nearest integer."
-        )
-      )
-    }
-    return(value)
-  }
-
-  result <- purrr::imap(
-    .x = list(
-      r = r, n = n, kappa = kappa, n_bins = n_bins, max_iter = max_iter
-    ),
-    .f = process_param
-  )
 
   return(result)
 
