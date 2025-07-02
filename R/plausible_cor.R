@@ -28,16 +28,16 @@
 #'        [posterior_rho_updf()], which controls how the unnormalised posterior
 #'        density function is computed for each Pearson correlation coefficient.
 #'        The following arguments can be included:
-#'        * `kappa` Numeric value controlling the "concentration" of the
+#'  * `kappa` Numeric value controlling the "concentration" of the
 #'        stretched beta prior on the correlation coefficient. Default is `1`,
 #'        resulting in a uniform prior.
-#'        * `n_bins` Integer denoting the number of bins ("resolution") used
+#'  * `n_bins` Integer denoting the number of bins ("resolution") used
 #'        for the discretised grid of correlation values, for which the
 #'        unnormalised posterior density values are computed. Default is `1e3`.
-#'        * `max_iter` Integer denoting the maximum number of iterations
+#'  * `max_iter` Integer denoting the maximum number of iterations
 #'        (attempts) to obtain a posterior density function for a given MCMC
 #'        sample. Default is `1e7`.
-#'        * `...` additional arguments passed forward to [stats::approxfun()].
+#'  * `...` additional arguments passed forward to [stats::approxfun()].
 #'
 #' @return A [tibble::tbl_df-class] with one row per MCMC sample containing:
 #'   \item{.draw}{The MCMC sample ID}
@@ -55,8 +55,9 @@
 #'    resulting in a set of plausible correlation values for the given sample
 #'    of subjects.
 #'    This handles uncertainty in the estimation of individual subjects'
-#'    model parameters, but does not account for uncertainty in generalising
-#'    from the sample to the population.
+#'    model parameters, and is suitable for inferences about the correlation
+#'    coefficient in the given sample of subjects. However, it does not account
+#'    for uncertainty in generalising from the sample to the population.
 #'
 #' 2. Second, it calculates the posterior density function for each correlation
 #'    using the analytical solution derived by Ly et al. (2018), resulting in
@@ -67,18 +68,18 @@
 #'
 #' The function requires at least 3 valid observations per MCMC sample and
 #' filters out any correlation values that are not finite or outside the valid
-#' range of [-1, 1].
+#' range of \eqn{\left[-1, 1\right]}.
 #'
 #' @references
 #' Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,
 #' & Matzke, D. (2017). A flexible and efficient hierarchical bayesian approach
 #' to the exploration of individual differences in cognitive‐model‐based
-#' neuroscience. *Computational models of brain and behavior*, 467-479.
-#' https://doi.org/10.1002/9781119159193.ch34
+#' neuroscience. *Computational models of brain and behavior*, 467-479. DOI:
+#' [10.1002/9781119159193.ch34](https://doi.org/10.1002/9781119159193.ch34)
 #'
 #' Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Analytic posteriors for
-#' Pearson's correlation coefficient. *Statistica Neerlandica*, 72, 4–13.
-#' https://doi.org/10.1111/stan.12111
+#' Pearson's correlation coefficient. *Statistica Neerlandica*, *72*, 4–13. DOI:
+#' [10.1111/stan.12111](https://doi.org/10.1111/stan.12111)
 #'
 #' @export
 run_plausible_cor <- function(
@@ -175,29 +176,44 @@ run_plausible_cor_pearson <- function(
 #' samples).
 #'
 #' @param .data A data frame output from [run_plausible_cor()].
-#' @param point_method Method used to compute the central tendency of the
-#'        correlation estimate. One of `"mean"` or `"median"`. Default is
-#'        `"mean"`.
-#' @param interval_width Numeric vector of desired credible interval widths
-#'        (e.g., `c(0.5, 0.8, 0.95)`). Must be values between 0 and 1.
-#' @param interval_method Method used for computing intervals. One of `"hdci"`
-#'        (highest-density continuous interval, a.k.a. shortest probability
-#'        interval) or `"qi"` (quantile interval). Default is `"hdci"`.
+#' @param point_interval_args A named list specifying how the central tendency
+#'        and credible interval(s) should be computed, or `NULL` to use defaults.
+#'        Valid elements are: `point_method` (character string, either `"mean"`
+#'        or `"median"` for the point summary), `interval_method` (character
+#'        string, either `"hdci"` for highest density credible interval or `"qi"`
+#'        for quantile interval), and `interval_width` (numeric vector with
+#'        values between 0 and 1 specifying the desired interval width(s)).
+#'        Any invalid arguments will be ignored with a warning. Partial
+#'        specification is supported; unspecified elements will use defaults.
+#'        Defaults to
+#'        `list(point_method = "mean", interval_method = "hdci", interval_width = 0.95)`.
+#' @param rope_range Optional numeric vector of length 2 specifying the lower
+#'        and upper bounds of the region of practical equivalence (ROPE), which
+#'        is used to compute the proportion of the distribution contained within
+#'        the ROPE. Defaults to `NULL` in which case the ROPE is ignored. See
+#'        Gignac & Szodorai (2016) for guidance on what constitutes a correlation
+#'        coefficient practically equivalent to null.
 #'
-#' @return A tibble with one row per summary type ("sample" and "posterior"),
-#'         and credible interval width, containing:
+#' @return A [tibble::tbl_df-class] with one row per summary type
+#'         ("sample" and "posterior") and credible interval width, containing:
 #'   \item{type}{Whether the row corresponds to the sample-based or
 #'         posterior-based summary}
 #'   \item{mean / median}{Point estimate of the correlation coefficient}
 #'   \item{lower / upper}{Credible interval bounds for each `interval_width`}
+#'   \item{width}{If the length of `interval_width` is greater than 1: The width of the credible interval.}
 #'   \item{p_dir}{Directional probability (proportion of mass > 0 or < 0)}
+#'   \item{p_rope}{If specified: The proportion contained within the ROPE.}
+#'
+#' @references
+#' Gignac, G. E., & Szodorai, E. T. (2016). Effect size guidelines for
+#' individual differences researchers. *Personality and individual differences*,
+#' *102*, 74-78. DOI: [10.1016/j.paid.2016.06.069](https://doi.org/10.1016/j.paid.2016.06.069)
 #'
 #' @export
 summarise_plausible_cor <- function(
     .data,
-    point_method = c("mean", "median"),
-    interval_width = c(0.5, 0.8, 0.95),
-    interval_method = c("hdci", "qi")
+    point_interval_args = NULL,
+    rope_range = NULL
 ) {
 
   validate_column_inputs(
@@ -206,15 +222,15 @@ summarise_plausible_cor <- function(
     data_name = ".data"
   )
 
-  point_method <- rlang::arg_match(arg = point_method)
-  interval_method <- rlang::arg_match(arg = interval_method)
+  point_interval_args <- validate_point_interval_args(point_interval_args)
 
   sample_summary <- .data %>%
     dplyr::select(dplyr::all_of("r")) %>%
     summarise_samples(
-      point_method = point_method,
-      interval_width = interval_width,
-      interval_method = interval_method
+      point_method = point_interval_args[["point_method"]],
+      interval_width = point_interval_args[["interval_width"]],
+      interval_method = point_interval_args[["interval_method"]],
+      rope_range = rope_range
     ) %>%
     dplyr::mutate(
       type = "sample"
@@ -232,20 +248,20 @@ summarise_plausible_cor <- function(
   population_point <- get_point_estimate(
     val = rho_grid,
     dens = mean_density,
-    method = point_method
+    method = point_interval_args[["point_method"]]
   )
 
   population_interval <- get_interval(
     val = rho_grid,
     dens = mean_density,
-    width = interval_width,
-    method = interval_method
+    width = point_interval_args[["interval_width"]],
+    method = point_interval_args[["interval_method"]]
   )
 
   population_summary <- population_interval %>%
     dplyr::mutate(
       type = "population",
-      !!point_method := population_point,
+      !!point_interval_args[["point_method"]] := population_point,
       p_dir = max(
         sum(mean_density[rho_grid > 0]) * dx,
         sum(mean_density[rho_grid < 0]) * dx
@@ -253,12 +269,34 @@ summarise_plausible_cor <- function(
     ) %>%
     dplyr::relocate(dplyr::all_of("type"))
 
+  if (!is.null(rope_range)) {
+    if (length(rope_range) != 2 || rope_range[1] >= rope_range[2]) {
+      rlang::abort(
+        message = paste0(
+          "Argument 'rope_range' must be a numeric vector of length 2, ",
+          "where the first element must be less than the second."
+        )
+      )
+    }
+    population_summary <- population_summary %>%
+      dplyr::mutate(
+        p_rope = sum(
+          mean_density[rho_grid >= rope_range[1] & rho_grid <= rope_range[2]]
+        ) * dx
+      )
+  }
+
   result <- dplyr::bind_rows(
     sample_summary, population_summary
   ) %>%
     dplyr::mutate(
       type = factor(.data[["type"]])
     )
+
+  if (length(point_interval_args[["interval_width"]]) == 1) {
+    result <- result %>%
+      dplyr::select(-dplyr::all_of("width"))
+  }
 
   return(result)
 
@@ -268,23 +306,31 @@ summarise_plausible_cor <- function(
 #'
 #' @description
 #' Compares the posterior distributions of plausible correlation values, as
-#' returned by two separate calls to [run_plausible_cors()]. Uses two methods
+#' returned by two separate calls to [run_plausible_cor()]. Uses two methods
 #' methods for defining the distribution of the difference: a **sample-based**
 #' comparison, which subtracts the correlation values from matching MCMC
 #' samples, and a **population-based** comparison, which draws quantiles from
 #' each posterior distribution (accounting for population uncertainty) before
 #' computing the difference.
 #'
-#' @param x,y Data frames returned by [run_plausible_cors()], each containing
+#' @param x,y Data frames returned by [run_plausible_cor()], each containing
 #'   the columns `.draw`, `r`, and `posterior_updf`.
-#' @param point_method Character string specifying the summary point estimate
-#'   of the delta distribution. Either `"mean"` (default) or `"median"`.
-#' @param interval_width Numeric vector of interval widths (between 0 and 1)
-#'   for the uncertainty intervals to be returned. Default is
-#'   `c(0.5, 0.8, 0.95)`.
-#' @param interval_method Character string specifying the method used to
-#'   compute intervals. Either `"hdci"` (highest-density continuous interval;
-#'   default) or `"qi"` (quantile interval).
+#' @param point_interval_args A named list specifying how the central tendency
+#'        and credible interval(s) of the difference should be computed, or
+#'        `NULL` to use defaults. Valid elements are: `point_method`
+#'        (character string, either `"mean"` or `"median"` for the point summary),
+#'        `interval_method` (character string, either `"hdci"` for highest
+#'        density credible interval or `"qi"` for quantile interval), and
+#'        `interval_width` (numeric vector with values between 0 and 1
+#'        specifying the desired interval width(s)).
+#'        Any invalid arguments will be ignored with a warning. Partial
+#'        specification is supported; unspecified elements will use defaults.
+#'        Defaults to
+#'        `list(point_method = "mean", interval_method = "hdci", interval_width = 0.95)`.
+#' @param rope_range Optional numeric vector of length 2 specifying the lower
+#'        and upper bounds of the region of practical equivalence (ROPE), which
+#'        is used to compute the proportion of the distribution contained within
+#'        the ROPE. Defaults to `NULL` in which case the ROPE is ignored.
 #' @param n_samples Integer indicating how many quantiles to draw per posterior
 #'   distribution when `comparison_method = "population"`. Default is 1.
 #' @param rng_seed Optional numeric vector of length 2 to control the random
@@ -292,7 +338,7 @@ summarise_plausible_cor <- function(
 #'   random seeds will not be set.
 #'
 #' @return A [tibble::tibble()] containing summary statistics of the difference
-#'  between correlation coefficients.
+#'  between correlation coefficients, with the same format as [summarise_plausible_cor()].
 #'
 #' @details
 #' For the sample-based comparison, the function computes the difference in the
@@ -322,9 +368,8 @@ summarise_plausible_cor <- function(
 compare_plausible_cors <- function(
     x,
     y,
-    point_method = c("mean", "median"),
-    interval_width = c(0.5, 0.8, 0.95),
-    interval_method = c("hdci", "qi"),
+    point_interval_args = NULL,
+    rope_range = NULL,
     n_samples = 1,
     rng_seed = NULL
 ) {
@@ -355,8 +400,7 @@ compare_plausible_cors <- function(
     )
   }
 
-  point_method <- rlang::arg_match(arg = point_method)
-  interval_method <- rlang::arg_match(arg = interval_method)
+  point_interval_args <- validate_point_interval_args(point_interval_args)
 
   sample_delta_summary <- dplyr::inner_join(
     x = dplyr::select(
@@ -375,9 +419,10 @@ compare_plausible_cors <- function(
       .keep = "none"
     ) %>%
     summarise_samples(
-      point_method = point_method,
-      interval_width = interval_width,
-      interval_method = interval_method
+      point_method = point_interval_args[["point_method"]],
+      interval_width = point_interval_args[["interval_width"]],
+      interval_method = point_interval_args[["interval_method"]],
+      rope_range = rope_range
     ) %>%
     dplyr::mutate(type = "sample") %>%
     dplyr::relocate(dplyr::all_of("type"))
@@ -409,9 +454,10 @@ compare_plausible_cors <- function(
       .keep = "none"
     ) %>%
     summarise_samples(
-      point_method = point_method,
-      interval_width = interval_width,
-      interval_method = interval_method
+      point_method = point_interval_args[["point_method"]],
+      interval_width = point_interval_args[["interval_width"]],
+      interval_method = point_interval_args[["interval_method"]],
+      rope_range = rope_range
     ) %>%
     dplyr::mutate(type = "population") %>%
     dplyr::relocate(dplyr::all_of("type"))
@@ -423,6 +469,11 @@ compare_plausible_cors <- function(
       type = factor(.data[["type"]])
     )
 
+  if (length(point_interval_args[["interval_width"]]) == 1) {
+    result <- result %>%
+      dplyr::select(-dplyr::all_of("width"))
+  }
+
   return(result)
 
 }
@@ -431,8 +482,8 @@ compare_plausible_cors <- function(
 #'
 #' @description
 #' Helper function that evaluates each posterior density function in the output
-#' of [run_plausible_cor()] over a shared grid from -1 to 1. Typical users
-#' would not have to call this function, instead relying on
+#' of [run_plausible_cor()] over a shared grid in the range \eqn{\left[-1, 1\right]}.
+#' Typical users would not have to call this function, instead relying on
 #' [summarise_plausible_cor()], [compare_plausible_cors()], and
 #' [plot_population_cor()].
 #'
@@ -525,130 +576,6 @@ get_mean_posterior_rho <- function(.data) {
       mean_density = .data[["mean_density"]] /
         sum(.data[["mean_density"]] * dx)
     )
-
-  return(result)
-
-}
-
-#' @title Compute Point Estimate from Discretised Density
-#'
-#' @description Internal helper function to compute a point estimate (mean,
-#' median, or arbitrary quantile) from a numeric vector of values and a
-#' corresponding density over a discretised grid.
-#'
-#' @param val Numeric vector representing the grid of values over which the
-#'        density is defined. Assumed to be equally spaced.
-#' @param dens Numeric vector of the same length as `val`, representing the
-#'        density at each grid point.
-#' @param method Character string specifying which point estimate to compute.
-#'        One of `"mean"`, `"median"`, or `"quantile"`.
-#' @param prob Numeric value between 0 and 1, only required when
-#'        `method = "quantile"`. Specifies the cumulative probability at which
-#'        to evaluate the quantile.
-#'
-#' @return A numeric value corresponding to the requested point estimate.
-#'
-#' @noRd
-get_point_estimate <- function(
-    val,
-    dens,
-    method = c("mean", "median", "quantile"),
-    prob = NULL
-) {
-
-  if (length(val) != length(dens)) {
-    rlang::abort(
-      message = "Input arguments 'val' and 'dens' must be of equal length."
-    )
-  }
-  method <- rlang::arg_match(arg = method)
-  dx <- diff(val)[1]
-
-  if (method == "mean") {
-    result <- sum(val * dens) * dx
-  } else {
-    cdf <- cumsum(dens) * dx
-    if (method == "median" && is.null(prob)) {
-      prob <- 0.5
-    }
-    if (is.null(prob)) {
-      rlang::abort(message = "No value for 'prob' provided.")
-    }
-    result <- stats::approx(
-      x = cdf,
-      y = val,
-      xout = prob,
-      ties = "ordered"
-    )
-    result <- result[["y"]]
-  }
-
-  return(result)
-
-}
-
-#' @title Compute Posterior Interval from Discretised Density
-#'
-#' @description Internal helper function to compute credible intervals
-#' (quantile interval or highest-density continuous interval) from a numeric
-#' vector of values and a corresponding density over a discretised grid.
-#'
-#' @param val Numeric vector representing the grid of values over which the
-#'        density is defined. Assumed to be equally spaced.
-#' @param dens Numeric vector of the same length as `val`, representing the
-#'        density at each grid point.
-#' @param width Numeric vector of desired interval widths
-#'        (e.g., `0.95` for a 95% interval).
-#' @param method Character string specifying which interval type to compute.
-#'        One of `"qi"` (quantile interval) or `"hdci"`
-#'        (highest-density continuous interval, default).
-#'
-#' @return A data frame with columns `"lower"`, `"upper"`, and `"width"` for
-#'         each requested interval.
-#'
-#' @noRd
-get_interval <- function(
-    val,
-    dens,
-    width,
-    method = c("hdci", "qi")
-) {
-
-  if (length(val) != length(dens)) {
-    rlang::abort(
-      message = "Input arguments 'val' and 'dens' must be of equal length."
-    )
-  }
-  method <- rlang::arg_match(arg = method)
-  dx <- diff(val)[1]
-  cdf <- cumsum(dens) * dx
-
-  compute_interval <- function(w) {
-    if (method == "qi") {
-      qi_approx <- stats::approx(
-        x = cdf,
-        y = val,
-        xout = c((1 - w) / 2, (1 + w) / 2),
-        ties = "ordered"
-      )
-      out <- qi_approx[["y"]]
-    } else {
-      df <- data.frame(val = val, dens = dens)
-      df <- df[order(-df$dens), ]
-      df$cum_dens <- cumsum(df$dens * dx)
-      included_vals <- df$cum_dens <= w
-      out <- range(df$val[included_vals])
-    }
-    out <- c(out, w)
-    names(out) <- c("lower", "upper", "width")
-    return(out)
-  }
-
-  result <- purrr::map(
-    .x = width,
-    .f = compute_interval
-  ) %>%
-    dplyr::bind_rows()
 
   return(result)
 
@@ -758,8 +685,9 @@ get_sampled_quantiles <- function(
 #' @description
 #' Summarises a single numeric column from a data frame containing posterior
 #' samples (or any numeric data), providing a point estimate (mean or median),
-#' credible intervals (e.g., highest-density continous intervals or quantiles),
-#' and the directionality of the distribution (positive or negative).
+#' credible interval(s) (e.g., highest-density continous intervals or quantiles),
+#' the directionality of the distribution (positive or negative), and optionally
+#' the proportion contained in a region of practical equivalence (ROPE).
 #'
 #' @param .data A data frame containing a single numeric column representing
 #'   posterior samples or any distribution of interest.
@@ -767,11 +695,14 @@ get_sampled_quantiles <- function(
 #' @param point_method A string indicating the point estimate to compute. Can
 #'   either be `"mean"` (default) or `"median"`.
 #' @param interval_width Numeric vector of values between 0 and 1 specifying the
-#'   widths of the credible intervals to calculate. Default is
-#'   `c(0.5, 0.8, 0.95)`.
+#'   width(s) of the credible interval(s) to calculate. Default is `0.95`.
 #' @param interval_method A string indicating the method for computing intervals.
 #'   Can either be `"hdci"` (highest-density continous intervals; default) or
 #'   `"qi"` (quantile intervals).
+#' @param rope_range Optional numeric vector of length 2 specifying the lower
+#'        and upper bounds of the region of practical equivalence (ROPE), which
+#'        is used to compute the proportion of the distribution contained within
+#'        the ROPE. Defaults to `NULL` in which case the ROPE is ignored.
 #'
 #' @return A [tibble::tibble] summarizing the posterior samples.
 #'
@@ -780,8 +711,9 @@ summarise_samples <- function(
     .data,
     ...,
     point_method = c("mean", "median"),
-    interval_width = c(0.5, 0.8, 0.95),
-    interval_method = c("hdci", "qi")
+    interval_width = 0.95,
+    interval_method = c("hdci", "qi"),
+    rope_range = NULL
 ) {
 
   data <- .data %>%
@@ -798,6 +730,21 @@ summarise_samples <- function(
     mean(data[[varname]] > 0),
     mean(data[[varname]] < 0)
   )
+
+  p_rope <- NULL
+  if (!is.null(rope_range)) {
+    if (length(rope_range) != 2 || rope_range[1] >= rope_range[2]) {
+      rlang::abort(
+        message = paste0(
+          "Argument 'rope_range' must be a numeric vector of length 2, ",
+          "where the first element must be less than the second."
+        )
+      )
+    }
+    p_rope <- mean(
+      data[[varname]] >= rope_range[1] & data[[varname]] <= rope_range[2]
+    )
+  }
 
   point_fun <- switch(
     point_method,
@@ -831,118 +778,14 @@ summarise_samples <- function(
       p_dir = p_dir
     )
 
+  if (!is.null(p_rope)) {
+    result <- result %>%
+      dplyr::mutate(
+        p_rope = p_rope
+      )
+  }
+
   return(result)
-
-}
-
-#' Validate column name inputs for functions working with data frames
-#'
-#' @description
-#' Internal helper function that checks whether user-supplied column names are
-#' valid. Optionally verifies that the named columns exist in a provided data
-#' frame.
-#'
-#' @param col_names Named character vector of column names to validate.
-#' @param data_frame Optional data frame to check column existence for.
-#' @param data_name Optional name of the data frame for error messages.
-#'
-#' @return Invisibly returns NULL if validation passes, otherwise raises an
-#'         error.
-#' @noRd
-validate_column_inputs <- function(
-    col_names,
-    data_frame = NULL,
-    data_name = NULL
-) {
-  invalid_cols <- purrr::map_lgl(
-    .x = col_names,
-    .f = function(col_name) {
-      length(col_name) != 1 || !is.character(col_name)
-    }
-  )
-  if (any(invalid_cols)) {
-    bad_names <- names(col_names)[invalid_cols]
-    rlang::abort(
-      message = paste0(
-        "Input '", paste(bad_names, collapse = "', '"),
-        "' must be a single string denoting a column."
-      )
-    )
-  }
-
-  if (!is.null(data_frame)) {
-    if (is.null(data_name)) {
-      data_name <- rlang::as_label(rlang::enquo(data_frame))
-    }
-    missing_cols <- setdiff(unname(col_names), names(data_frame))
-    if (length(missing_cols) > 0) {
-      rlang::abort(
-        message = paste0(
-          "Missing required columns in '", data_name, "': ",
-          paste(missing_cols, collapse = ", "), "."
-        )
-      )
-    }
-  }
-
-  return(invisible(x = NULL))
-
-}
-
-
-#' Validate posterior_args parameter
-#'
-#' @description
-#' Internal helper function to validate the structure and contents of the
-#' posterior_args parameter passed to functions that use [posterior_rho_updf()].
-#' Allowed arguments are: kappa, n_bins, max_iter, and [stats::approxfun()]
-#' arguments (method, yleft, yright, rule, f, ties).
-#'
-#' @param posterior_args A named list of arguments or NULL
-#'
-#' @return The validated (and potentially cleaned) posterior_args list
-#'
-#' @noRd
-validate_posterior_args <- function(posterior_args) {
-
-  if (is.null(posterior_args)) {
-    return(NULL)
-  }
-  if (!is.list(posterior_args)) {
-    rlang::abort(message = "'posterior_args' must be a named list or NULL")
-  }
-  if (is.null(names(posterior_args)) && length(posterior_args) > 0) {
-    rlang::abort(message = "'posterior_args' must be a named list")
-  }
-
-  arg_names <- names(posterior_args)
-  allowed_args <- c(
-    # posterior_rho_updf args
-    "kappa", "n_bins", "max_iter",
-    # stats::approxfun args
-    "method", "yleft", "yright", "rule", "f", "ties"
-  )
-  disallowed_args <- setdiff(arg_names, allowed_args)
-  if ("na.rm" %in% arg_names) {
-    rlang::warn(message = "'na.rm' argument is ignored; forced to be TRUE")
-    posterior_args[["na.rm"]] <- NULL
-    disallowed_args <- setdiff(disallowed_args, "na.rm")
-  }
-  if (length(disallowed_args) > 0) {
-    rlang::warn(
-      message = paste0(
-        "Removing unknown argument(s) from 'posterior_args': ",
-        paste(disallowed_args, collapse = ", "),
-        ".\nAllowed arguments are: ", paste(allowed_args, collapse = ", ")
-      )
-    )
-    for (arg in disallowed_args) {
-      posterior_args[[arg]] <- NULL
-    }
-    arg_names <- names(posterior_args)
-  }
-
-  return(posterior_args)
 
 }
 
