@@ -110,6 +110,7 @@ plot_sample_cor <- function(
     point_method = "mean",
     interval_method = "hdci", interval_width = c(0.5, 0.8, 0.95)
   )
+  point_interval_args <- validate_point_interval_args(point_interval_args)
 
   if (style == "dots") {
     plot_aes <- plot_aes %||% list(
@@ -460,57 +461,8 @@ draw_rows <- function(.data, n_draws, rng_seed) {
 }
 
 #' @noRd
-validate_geom_args <- function(
-    aes_list,
-    allowed_names = character(),
-    disallowed_names = character(),
-    arg_name = deparse(substitute(aes_list))
-) {
-  if (!is.list(aes_list)) {
-    rlang::abort(
-      message = sprintf("`%s` must be a list or FALSE.", arg_name)
-    )
-  }
-  if (isFALSE(aes_list) || is.null(aes_list)) {
-    return(invisible(x = NULL))
-  }
-
-  actual_names <- names(aes_list)
-  disallowed_found <- intersect(actual_names, disallowed_names)
-  if (length(disallowed_found) > 0) {
-    rlang::abort(
-      message = sprintf(
-        "In `%s`, the following names are not allowed: %s",
-        arg_name, paste(disallowed_found, collapse = ", ")
-      )
-    )
-  }
-
-  if (length(allowed_names) >= 1) {
-    unknown_names <- setdiff(actual_names, allowed_names)
-    if (length(unknown_names) > 0) {
-      rlang::abort(
-        message = sprintf(
-          "In `%s`, unknown aesthetic name(s): %s\nAllowed: %s",
-          arg_name,
-          paste(unknown_names, collapse = ", "),
-          paste(allowed_names, collapse = ", ")
-        )
-      )
-    }
-  }
-
-  return(invisible(x = NULL))
-}
-
-
-#' @noRd
 add_theme_elements <- function(plot_text_scaling) {
   result <- ggplot2::theme_minimal() +
-    # ggplot2::scale_x_continuous(
-    #   # https://doi.org/10.1016/j.paid.2016.06.069
-    #   breaks = c(-1, -0.5, -0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.5, 1),
-    # ) +
     ggplot2::theme(
       panel.grid.minor.y = ggplot2::element_blank(),
       panel.grid.major.y = ggplot2::element_blank(),
