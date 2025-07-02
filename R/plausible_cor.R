@@ -115,6 +115,8 @@ run_plausible_cor <- function(
     posterior_args = posterior_args
   )
 
+  class(result) <- c("plausible_cor", class(result))
+
   return(result)
 
 }
@@ -165,6 +167,34 @@ run_plausible_cor_pearson <- function(
 
   return(result)
 
+}
+
+#' Summary method for plausible correlation objects
+#'
+#' @param object An object of class "plausible_cor" (output from [run_plausible_cor()]).
+#' @param point_interval_args A named list specifying how the central tendency
+#'        and credible interval(s) should be computed. See [summarise_plausible_cor()]
+#'        for details.
+#' @param rope_range Optional numeric vector of length 2 specifying the ROPE bounds.
+#'        See [summarise_plausible_cor()] for details.
+#' @param ... Additional arguments (currently unused)
+#'
+#' @return A summary object with class "summary.plausible_cor"
+#' @export
+#' @method summary plausible_cor
+summary.plausible_cor <- function(
+    object,
+    point_interval_args = NULL,
+    rope_range = NULL,
+    ...
+) {
+  result <- summarise_plausible_cor(
+    .data = object,
+    point_interval_args = point_interval_args,
+    rope_range = rope_range
+  )
+  class(result) <- c("summary.plausible_cor", class(result))
+  return(result)
 }
 
 #' Summarise plausible correlation estimates
