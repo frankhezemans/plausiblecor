@@ -34,8 +34,8 @@ moving dots appeared to move to the left or to the right. Before each trial,
 an \strong{instructional cue} indicated the emphasis for that trial: either to
 respond as \strong{quickly} as possible (speed condition), as \strong{accurately} as
 possible (accuracy condition), or to adopt a \strong{balanced} speed–accuracy
-trade-off (neutral condition). These cues manipulated response caution on a
-trial-by-trial basis.
+trade-off (neutral condition). These cues were assumed to modulate response
+caution on a trial-by-trial basis.
 
 The fMRI contrasts reflect results from a group-level conjunction analysis
 that identified voxels more active in both the \emph{speed > accuracy} and \emph{speed > neutral}

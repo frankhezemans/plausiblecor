@@ -44,9 +44,14 @@ The threshold was indirectly estimated via the non-negative quantity \code{B = b
 
 To test the hypothesis that the speed–accuracy manipulation influenced response
 caution, \code{B} was allowed to vary across the three conditions (speed, neutral,
-accuracy). To account for differences in response accuracy, the mean drift rate \code{v}
-varied by response correctness. All other parameters were held constant across
-conditions. The standard deviation \code{sv} was fixed to 1.
+accuracy). To account for differences in response accuracy, the mean and
+standard deviation of drift rate (\code{v} and \code{sv}) varied by response correctness.
+These effects were modeled using sum-to-zero contrasts, where parameter values
+that differ by levels of a categorical variable
+(perceptual cue for \code{B}; response correctness for \code{v} and \code{sv}) are coded as
+deviations from a grand mean (intercept). To satisfy the scaling constraint of
+the LBA model (Donkin et al., 2009), the intercept of \code{sv} was arbitrarily fixed
+to 1. The parameters \code{A} and \code{t0} were assumed to be shared across conditions.
 
 Model parameters were estimated using hierarchical Bayesian methods via the
 EMC2 package (Stevenson et al., 2025), drawing 6000 posterior samples
@@ -68,6 +73,10 @@ better account for these data (see, e.g., the
 Brown, S. D., & Heathcote, A. (2008). The simplest complete model of choice
 response time: Linear ballistic accumulation. \emph{Cognitive Psychology}, 57(3),
 153–178. \doi{10.1016/j.cogpsych.2007.12.002}
+
+Donkin, C., Brown, S. D., & Heathcote, A. (2009). The overconstraint of
+response time models: Rethinking the scaling problem.
+\emph{Psychonomic Bulletin & Review}, \emph{16}, 1129-1135. \doi{10.3758/PBR.16.6.1129}
 
 Forstmann, B. U., Dutilh, G., Brown, S., Neumann, J., von Cramon, D. Y.,
 Ridderinkhof, K. R., & Wagenmakers, E.-J. (2008). Striatum and pre-SMA

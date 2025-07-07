@@ -11,8 +11,8 @@
 #' an **instructional cue** indicated the emphasis for that trial: either to
 #' respond as **quickly** as possible (speed condition), as **accurately** as
 #' possible (accuracy condition), or to adopt a **balanced** speed–accuracy
-#' trade-off (neutral condition). These cues manipulated response caution on a
-#' trial-by-trial basis.
+#' trade-off (neutral condition). These cues were assumed to modulate response
+#' caution on a trial-by-trial basis.
 #'
 #' The fMRI contrasts reflect results from a group-level conjunction analysis
 #' that identified voxels more active in both the *speed > accuracy* and *speed > neutral*
@@ -67,9 +67,14 @@
 #'
 #' To test the hypothesis that the speed–accuracy manipulation influenced response
 #' caution, `B` was allowed to vary across the three conditions (speed, neutral,
-#' accuracy). To account for differences in response accuracy, the mean drift rate `v`
-#' varied by response correctness. All other parameters were held constant across
-#' conditions. The standard deviation `sv` was fixed to 1.
+#' accuracy). To account for differences in response accuracy, the mean and
+#' standard deviation of drift rate (`v` and `sv`) varied by response correctness.
+#' These effects were modeled using sum-to-zero contrasts, where parameter values
+#' that differ by levels of a categorical variable
+#' (perceptual cue for `B`; response correctness for `v` and `sv`) are coded as
+#' deviations from a grand mean (intercept). To satisfy the scaling constraint of
+#' the LBA model (Donkin et al., 2009), the intercept of `sv` was arbitrarily fixed
+#' to 1. The parameters `A` and `t0` were assumed to be shared across conditions.
 #'
 #' Model parameters were estimated using hierarchical Bayesian methods via the
 #' EMC2 package (Stevenson et al., 2025), drawing 6000 posterior samples
@@ -102,6 +107,10 @@
 #' Brown, S. D., & Heathcote, A. (2008). The simplest complete model of choice
 #' response time: Linear ballistic accumulation. *Cognitive Psychology*, 57(3),
 #' 153–178. \doi{10.1016/j.cogpsych.2007.12.002}
+#'
+#' Donkin, C., Brown, S. D., & Heathcote, A. (2009). The overconstraint of
+#' response time models: Rethinking the scaling problem.
+#' *Psychonomic Bulletin & Review*, *16*, 1129-1135. \doi{10.3758/PBR.16.6.1129}
 #'
 #' Forstmann, B. U., Dutilh, G., Brown, S., Neumann, J., von Cramon, D. Y.,
 #' Ridderinkhof, K. R., & Wagenmakers, E.-J. (2008). Striatum and pre-SMA
