@@ -1,183 +1,40 @@
-#' Plot sample correlation coefficients from plausible value analysis
+#' Plot method for plausible correlation objects
 #'
-#' @description
-#' Visualises the distribution of sample Pearson correlation coefficients
-#' obtained from [run_plausible_cor()], using either a dotplot or histogram
-#' style. This function wraps [ggdist::stat_dotsinterval()] or
-#' [ggdist::stat_histinterval()], providing a quick way to plot uncertainty
-#' about the sample correlations.
-#'
-#' @param .data A data frame returned by [run_plausible_cor()], containing at
-#'        least `.draw` and `r` columns.
-#' @param n_draws Integer specifying the maximum number of MCMC draws to plot.
-#'        Default is `Inf` (use all draws).
-#' @param style Character, either `"dots"` (default) for a dotplot using
-#'        [ggdist::stat_dotsinterval()] or `"hist"` for a histogram using
-#'        [ggdist::stat_histinterval()].
-#' @param plot_aes A named list of aesthetics, passed to the underlying plotting
-#'        function. Defaults to
-#'        `list(binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress", colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))`
-#'        if `style == "dots"`, or to
-#'        `list(breaks = ggdist::waiver(), colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))`
-#'        if `style == "hist"`.
-#' @param zero_refline_aes A named list of aesthetics for the vertical reference
-#'        line at zero (e.g., `linetype`, `linewidth`, `colour`), passed to
-#'        [ggplot2::geom_vline()]. Defaults to
-#'        `list(linetype = "dashed", linewidth = 0.75)`. Set to `FALSE` to omit
-#'        the reference line entirely.
-#' @param point_interval_args A named list that specifies how the point +
-#'        multiple-interval plot should be created. Should include the elements
-#'        `point_method`, which is a string that specifies the point summary
-#'        (e.g., `"mean"`), `interval_method`, which is a string that specifies
-#'        the interval type (e.g., `"hdci"`), and `interval_width`, which is a
-#'        numeric vector specifying the desired interval width(s). Defaults to
-#'        `list(point_method = "mean", interval_method = "hdci", width = c(0.5, 0.8, 0.95))`.
-#' @param x_title Label for the x-axis. Defaults to `"sample-level correlation"`.
-#' @param x_axis_limits Numeric vector of length 2 that defines x-axis limits
-#'        to "zoom" into, using [ggplot2::coord_cartesian()]. Alternatively,
-#'        `NULL` (default) retains the full scale.
-#' @param plot_text_scaling Numeric scaling factor for axis text and title
-#'        size. Default is `1`.
-#' @param rng_seed Optional integer seed for reproducible sampling of draws.
+#' @param x An object of class `"plausible_cor"` (output from [run_plausible_cor()])
+#' @param type Character string specifying the plot type. Options:
+#'        - `"population"` (default): Shows posterior distribution of population-level correlation
+#'        - `"sample"`: Shows distribution of sample-level correlations
+#' @param ... Additional arguments passed to the underlying plotting function:
+#'        [plot_population_cor()] for `type == "population"` or
+#'        [plot_sample_cor()] for `type == "sample"`. See those functions for details.
 #'
 #' @return A [ggplot2::ggplot()] object.
-#'
-#' @details
-#' Designed for visualizing the output of [run_plausible_cor()] — a plausible
-#' value analysis for correlations between model parameters and covariates.
-#'
-#' If `n_draws` is less than the number of available MCMC samples, a random
-#' subset is selected (optionally with reproducible seeding via `rng_seed`).
-#'
-#' @seealso [run_plausible_cor()], [ggdist::stat_dotsinterval()], [ggdist::stat_histinterval()]
-#'
 #' @export
-plot_sample_cor <- function(
-    .data,
-    n_draws = Inf,
-    style = c("dots", "hist"),
-    plot_aes = NULL,
-    zero_refline_aes = NULL,
-    point_interval_args = NULL,
-    x_title = "sample-level correlation",
-    x_axis_limits = NULL,
-    plot_text_scaling = 1,
-    rng_seed = NULL
+#' @method plot plausible_cor
+plot.plausible_cor <- function(
+    x,
+    type = c("population", "sample"),
+    ...
 ) {
 
-  style <- rlang::arg_match(arg = style)
-
-  validate_column_inputs(
-    col_names = c(".draw", "r"),
-    data_frame = .data,
-    data_name = ".data"
+  type <- match.arg(type)
+  result <- switch(
+    type,
+    "population" = {
+      plot_population_cor(
+        .data = x,
+        ...
+      )
+    },
+    "sample" = {
+      plot_sample_cor(
+        .data = x,
+        ...
+      )
+    }
   )
-
-  plot_data <- .data %>%
-    dplyr::select(
-      dplyr::all_of(c(".draw", "r"))
-    ) %>%
-    draw_rows(
-      n_draws = n_draws,
-      rng_seed = rng_seed
-    )
-
-  result <- ggplot2::ggplot(
-    data = plot_data,
-    mapping = ggplot2::aes(
-      x = .data[["r"]]
-    )
-  )
-
-  if (!isFALSE(zero_refline_aes)) {
-    zero_refline_aes <- zero_refline_aes %||% list(
-      linetype = "dashed", linewidth = 0.75, colour = "black"
-    )
-    validate_geom_args(
-      aes_list = zero_refline_aes,
-      disallowed_names = "xintercept",
-      arg_name = "zero_refline_aes"
-    )
-    result <- result +
-      rlang::exec(
-        .fn = ggplot2::geom_vline,
-        xintercept = 0,
-        !!!zero_refline_aes
-      )
-  }
-
-  point_interval_args <- point_interval_args %||% list(
-    point_method = "mean",
-    interval_method = "hdci", interval_width = c(0.5, 0.8, 0.95)
-  )
-  point_interval_args <- validate_point_interval_args(point_interval_args)
-
-  if (style == "dots") {
-    plot_aes <- plot_aes %||% list(
-      binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress",
-      colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75,
-      point_alpha = 1, point_size = 3,
-      interval_alpha = 1, interval_size_range = c(1.25, 2.5)
-    )
-    validate_geom_args(
-      aes_list = plot_aes,
-      disallowed_names = c(
-        "mapping", "data", "geom", "position", "point_interval", ".width"
-      ),
-      arg_name = "plot_aes"
-    )
-    result <- result +
-      rlang::exec(
-        .fn = ggdist::stat_dotsinterval,
-        point_interval = paste0(
-          point_interval_args[["point_method"]], "_",
-          point_interval_args[["interval_method"]]
-        ),
-        .width = point_interval_args[["interval_width"]],
-        !!!plot_aes
-      )
-  } else {
-    plot_aes <- plot_aes %||% list(
-      breaks = ggdist::waiver(),
-      colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75,
-      point_alpha = 1, point_size = 3,
-      interval_alpha = 1, interval_size_range = c(1.25, 2.5)
-    )
-    validate_geom_args(
-      aes_list = plot_aes,
-      disallowed_names = c(
-        "mapping", "data", "geom", "position", "point_interval", ".width"
-      ),
-      arg_name = "plot_aes"
-    )
-    result <- result +
-      rlang::exec(
-        .fn = ggdist::stat_histinterval,
-        point_interval = paste0(
-          point_interval_args[["point_method"]], "_",
-          point_interval_args[["interval_method"]]
-        ),
-        .width = point_interval_args[["interval_width"]],
-        !!!plot_aes
-      )
-  }
-
-  result <- result +
-    ggplot2::labs(
-      x = x_title
-    ) +
-    ggplot2::coord_cartesian(
-      xlim = x_axis_limits
-    ) +
-    ggplot2::scale_x_continuous(
-      expand = ggplot2::expansion(
-        mult = 0
-      )
-    ) +
-    add_theme_elements(plot_text_scaling)
 
   return(result)
-
 }
 
 #' Plot correlation posterior distributions from plausible value analysis
@@ -429,6 +286,188 @@ plot_population_cor <- function(
     ggplot2::coord_cartesian(
       xlim = x_axis_limits,
       expand = FALSE
+    ) +
+    add_theme_elements(plot_text_scaling)
+
+  return(result)
+
+}
+
+#' Plot sample correlation coefficients from plausible value analysis
+#'
+#' @description
+#' Visualises the distribution of sample Pearson correlation coefficients
+#' obtained from [run_plausible_cor()], using either a dotplot or histogram
+#' style. This function wraps [ggdist::stat_dotsinterval()] or
+#' [ggdist::stat_histinterval()], providing a quick way to plot uncertainty
+#' about the sample correlations.
+#'
+#' @param .data A data frame returned by [run_plausible_cor()], containing at
+#'        least `.draw` and `r` columns.
+#' @param n_draws Integer specifying the maximum number of MCMC draws to plot.
+#'        Default is `Inf` (use all draws).
+#' @param style Character, either `"dots"` (default) for a dotplot using
+#'        [ggdist::stat_dotsinterval()] or `"hist"` for a histogram using
+#'        [ggdist::stat_histinterval()].
+#' @param plot_aes A named list of aesthetics, passed to the underlying plotting
+#'        function. Defaults to
+#'        `list(binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress", colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))`
+#'        if `style == "dots"`, or to
+#'        `list(breaks = ggdist::waiver(), colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))`
+#'        if `style == "hist"`.
+#' @param zero_refline_aes A named list of aesthetics for the vertical reference
+#'        line at zero (e.g., `linetype`, `linewidth`, `colour`), passed to
+#'        [ggplot2::geom_vline()]. Defaults to
+#'        `list(linetype = "dashed", linewidth = 0.75)`. Set to `FALSE` to omit
+#'        the reference line entirely.
+#' @param point_interval_args A named list that specifies how the point +
+#'        multiple-interval plot should be created. Should include the elements
+#'        `point_method`, which is a string that specifies the point summary
+#'        (e.g., `"mean"`), `interval_method`, which is a string that specifies
+#'        the interval type (e.g., `"hdci"`), and `interval_width`, which is a
+#'        numeric vector specifying the desired interval width(s). Defaults to
+#'        `list(point_method = "mean", interval_method = "hdci", width = c(0.5, 0.8, 0.95))`.
+#' @param x_title Label for the x-axis. Defaults to `"sample-level correlation"`.
+#' @param x_axis_limits Numeric vector of length 2 that defines x-axis limits
+#'        to "zoom" into, using [ggplot2::coord_cartesian()]. Alternatively,
+#'        `NULL` (default) retains the full scale.
+#' @param plot_text_scaling Numeric scaling factor for axis text and title
+#'        size. Default is `1`.
+#' @param rng_seed Optional integer seed for reproducible sampling of draws.
+#'
+#' @return A [ggplot2::ggplot()] object.
+#'
+#' @details
+#' Designed for visualizing the output of [run_plausible_cor()] — a plausible
+#' value analysis for correlations between model parameters and covariates.
+#'
+#' If `n_draws` is less than the number of available MCMC samples, a random
+#' subset is selected (optionally with reproducible seeding via `rng_seed`).
+#'
+#' @seealso [run_plausible_cor()], [ggdist::stat_dotsinterval()], [ggdist::stat_histinterval()]
+#'
+#' @export
+plot_sample_cor <- function(
+    .data,
+    n_draws = Inf,
+    style = c("dots", "hist"),
+    plot_aes = NULL,
+    zero_refline_aes = NULL,
+    point_interval_args = NULL,
+    x_title = "sample-level correlation",
+    x_axis_limits = NULL,
+    plot_text_scaling = 1,
+    rng_seed = NULL
+) {
+
+  style <- rlang::arg_match(arg = style)
+
+  validate_column_inputs(
+    col_names = c(".draw", "r"),
+    data_frame = .data,
+    data_name = ".data"
+  )
+
+  plot_data <- .data %>%
+    dplyr::select(
+      dplyr::all_of(c(".draw", "r"))
+    ) %>%
+    draw_rows(
+      n_draws = n_draws,
+      rng_seed = rng_seed
+    )
+
+  result <- ggplot2::ggplot(
+    data = plot_data,
+    mapping = ggplot2::aes(
+      x = .data[["r"]]
+    )
+  )
+
+  if (!isFALSE(zero_refline_aes)) {
+    zero_refline_aes <- zero_refline_aes %||% list(
+      linetype = "dashed", linewidth = 0.75, colour = "black"
+    )
+    validate_geom_args(
+      aes_list = zero_refline_aes,
+      disallowed_names = "xintercept",
+      arg_name = "zero_refline_aes"
+    )
+    result <- result +
+      rlang::exec(
+        .fn = ggplot2::geom_vline,
+        xintercept = 0,
+        !!!zero_refline_aes
+      )
+  }
+
+  point_interval_args <- point_interval_args %||% list(
+    point_method = "mean",
+    interval_method = "hdci", interval_width = c(0.5, 0.8, 0.95)
+  )
+  point_interval_args <- validate_point_interval_args(point_interval_args)
+
+  if (style == "dots") {
+    plot_aes <- plot_aes %||% list(
+      binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress",
+      colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75,
+      point_alpha = 1, point_size = 3,
+      interval_alpha = 1, interval_size_range = c(1.25, 2.5)
+    )
+    validate_geom_args(
+      aes_list = plot_aes,
+      disallowed_names = c(
+        "mapping", "data", "geom", "position", "point_interval", ".width"
+      ),
+      arg_name = "plot_aes"
+    )
+    result <- result +
+      rlang::exec(
+        .fn = ggdist::stat_dotsinterval,
+        point_interval = paste0(
+          point_interval_args[["point_method"]], "_",
+          point_interval_args[["interval_method"]]
+        ),
+        .width = point_interval_args[["interval_width"]],
+        !!!plot_aes
+      )
+  } else {
+    plot_aes <- plot_aes %||% list(
+      breaks = ggdist::waiver(),
+      colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75,
+      point_alpha = 1, point_size = 3,
+      interval_alpha = 1, interval_size_range = c(1.25, 2.5)
+    )
+    validate_geom_args(
+      aes_list = plot_aes,
+      disallowed_names = c(
+        "mapping", "data", "geom", "position", "point_interval", ".width"
+      ),
+      arg_name = "plot_aes"
+    )
+    result <- result +
+      rlang::exec(
+        .fn = ggdist::stat_histinterval,
+        point_interval = paste0(
+          point_interval_args[["point_method"]], "_",
+          point_interval_args[["interval_method"]]
+        ),
+        .width = point_interval_args[["interval_width"]],
+        !!!plot_aes
+      )
+  }
+
+  result <- result +
+    ggplot2::labs(
+      x = x_title
+    ) +
+    ggplot2::coord_cartesian(
+      xlim = x_axis_limits
+    ) +
+    ggplot2::scale_x_continuous(
+      expand = ggplot2::expansion(
+        mult = 0
+      )
     ) +
     add_theme_elements(plot_text_scaling)
 
