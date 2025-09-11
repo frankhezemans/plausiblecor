@@ -197,6 +197,45 @@ validate_point_interval_args <- function(x) {
 }
 
 
+#' @noRd
+test_rope_range <- function(x) {
+  return(
+    checkmate::test_numeric(
+      x = x,
+      lower = -1,
+      upper = 1,
+      finite = TRUE,
+      any.missing = FALSE,
+      sorted = TRUE,
+      len = 2,
+      null.ok = FALSE
+    )
+  )
+}
+
+#' @noRd
+test_rng_seed <- function(x) {
+  return(
+    checkmate::test_integerish(
+      x = x,
+      any.missing = FALSE,
+      len = 2
+    )
+  )
+}
+
+#' @noRd
+test_densities <- function(x, test_len = NULL) {
+  return(
+    checkmate::test_double(
+      x = x,
+      finite = TRUE,
+      any.missing = FALSE,
+      len = test_len
+    )
+  )
+}
+
 # POSTERIOR_RHO ---------------------------------------------------------------
 
 #' Validate inputs for posterior_rho_updf function

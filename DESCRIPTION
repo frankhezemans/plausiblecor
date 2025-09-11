@@ -41,6 +41,7 @@ LazyData: true
 URL: https://github.com/frankhezemans/plausiblecor
 BugReports: https://github.com/frankhezemans/plausiblecor/issues
 Imports: 
+    checkmate,
     dplyr,
     ggdist,
     ggplot2,

@@ -145,9 +145,11 @@ run_plausible_cor_pearson <- function(
       .data[["n"]] >= 3 & is.finite(.data[["r"]]) & abs(.data[["r"]]) <= 1
     )
 
-  if (nrow(result) == 0) {
-    rlang::abort(message = "No MCMC samples with valid correlation values.")
-  }
+  checkmate::assert_data_frame(
+    x = result,
+    all.missing = FALSE,
+    min.rows = 1
+  )
 
   result <- result %>%
     dplyr::mutate(
@@ -299,15 +301,7 @@ summarise_plausible_cor <- function(
     ) %>%
     dplyr::relocate(dplyr::all_of("type"))
 
-  if (!is.null(rope_range)) {
-    if (length(rope_range) != 2 || rope_range[1] >= rope_range[2]) {
-      rlang::abort(
-        message = paste0(
-          "Argument 'rope_range' must be a numeric vector of length 2, ",
-          "where the first element must be less than the second."
-        )
-      )
-    }
+  if (test_rope_range(rope_range)) {
     population_summary <- population_summary %>%
       dplyr::mutate(
         p_rope = sum(
@@ -421,13 +415,8 @@ compare_plausible_cors <- function(
     )
   }
 
-  if (is.null(rng_seed) || any(!is.finite(rng_seed))) {
+  if (!test_rng_seed(rng_seed)) {
     rng_seed <- c(NA, NA)
-  }
-  if (length(rng_seed) != 2) {
-    rlang::abort(
-      message = "'rng_seed' should contain two elements (one per data frame)."
-    )
   }
 
   point_interval_args <- validate_point_interval_args(point_interval_args)
@@ -538,11 +527,11 @@ get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
   single_density_grid <- function(
     draw_id, r_val, updf, grid = rho_grid, dx = grid_spacing
   ) {
-    if (!rlang::is_function(updf)) {
+    if (!checkmate::test_function(updf)) {
       return(NULL)
     }
     dens <- updf(grid)
-    if (any(!is.finite(dens))) {
+    if (!test_densities(dens, test_len = length(grid))) {
       return(NULL)
     }
     dens_norm <- dens / sum(dens * dx)
@@ -749,12 +738,12 @@ summarise_samples <- function(
   data <- .data %>%
     dplyr::select(dplyr::where(is.numeric))
 
+  checkmate::assert_data_frame(
+    x = data,
+    any.missing = FALSE,
+    ncols = 1
+  )
   varname <- colnames(data)
-  if (length(varname) != 1) {
-    rlang::abort(
-      message = "Input data frame should only contain a single numeric column."
-    )
-  }
 
   p_dir <- max(
     mean(data[[varname]] > 0),
@@ -762,15 +751,7 @@ summarise_samples <- function(
   )
 
   p_rope <- NULL
-  if (!is.null(rope_range)) {
-    if (length(rope_range) != 2 || rope_range[1] >= rope_range[2]) {
-      rlang::abort(
-        message = paste0(
-          "Argument 'rope_range' must be a numeric vector of length 2, ",
-          "where the first element must be less than the second."
-        )
-      )
-    }
+  if (test_rope_range(rope_range)) {
     p_rope <- mean(
       data[[varname]] >= rope_range[1] & data[[varname]] <= rope_range[2]
     )
