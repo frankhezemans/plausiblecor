@@ -1,6 +1,6 @@
 # PLAUSIBLE_COR ---------------------------------------------------------------
 
-#' Validate posterior_args parameter
+#' Check posterior_args parameter
 #'
 #' @description
 #' Internal helper function to validate the structure and contents of the
@@ -10,49 +10,36 @@
 #'
 #' @param posterior_args A named list of arguments or NULL
 #'
-#' @return The validated (and potentially cleaned) posterior_args list
+#' @return The checked posterior_args list
 #'
 #' @noRd
-validate_posterior_args <- function(posterior_args) {
+assert_posterior_args <- function(posterior_args) {
 
   if (is.null(posterior_args)) {
     return(NULL)
   }
-  if (!is.list(posterior_args)) {
-    rlang::abort(message = "'posterior_args' must be a named list or NULL")
-  }
-  if (is.null(names(posterior_args)) && length(posterior_args) > 0) {
-    rlang::abort(message = "'posterior_args' must be a named list")
-  }
 
-  arg_names <- names(posterior_args)
-  allowed_args <- c(
-    # posterior_rho_updf args
-    "kappa", "n_bins", "max_iter",
-    # stats::approxfun args
-    "method", "yleft", "yright", "rule", "f", "ties"
-  )
-  disallowed_args <- setdiff(arg_names, allowed_args)
-  if ("na.rm" %in% arg_names) {
-    rlang::warn(message = "'na.rm' argument is ignored; forced to be TRUE")
-    posterior_args[["na.rm"]] <- NULL
-    disallowed_args <- setdiff(disallowed_args, "na.rm")
-  }
-  if (length(disallowed_args) > 0) {
-    rlang::warn(
-      message = paste0(
-        "Removing unknown argument(s) from 'posterior_args': ",
-        paste(disallowed_args, collapse = ", "),
-        ".\nAllowed arguments are: ", paste(allowed_args, collapse = ", ")
+  checkmate::assert(
+    checkmate::assert_list(
+      x = posterior_args,
+      any.missing = FALSE,
+      min.len = 1
+    ),
+    checkmate::assert_names(
+      x = names(posterior_args),
+      type = "strict",
+      subset.of = c(
+        # posterior_rho_updf args
+        "kappa", "n_bins", "max_iter",
+        # stats::approxfun args
+        "method", "yleft", "yright", "rule", "f", "ties"
       )
-    )
-    for (arg in disallowed_args) {
-      posterior_args[[arg]] <- NULL
-    }
-    arg_names <- names(posterior_args)
-  }
+    ),
+    combine = "and"
+  )
 
   return(posterior_args)
+
 }
 
 #' Validate column name inputs for functions working with data frames
@@ -94,15 +81,16 @@ validate_column_inputs <- function(
     if (is.null(data_name)) {
       data_name <- rlang::as_label(rlang::enquo(data_frame))
     }
-    missing_cols <- setdiff(unname(col_names), names(data_frame))
-    if (length(missing_cols) > 0) {
-      rlang::abort(
-        message = paste0(
-          "Missing required columns in '", data_name, "': ",
-          paste(missing_cols, collapse = ", "), "."
-        )
-      )
-    }
+    checkmate::assert_data_frame(
+      x = data_frame,
+      .var.name = data_name
+    )
+    checkmate::assert_names(
+      x = names(data_frame),
+      type = "strict",
+      must.include = unname(col_names),
+      .var.name = data_name
+    )
   }
 
   return(invisible(x = NULL))
@@ -121,77 +109,43 @@ validate_point_interval_args <- function(x) {
     return(defaults)
   }
 
-  valid_point_methods <- c("mean", "median")
-  valid_interval_methods <- c("hdci", "qi")
-  valid_arg_names <- c("point_method", "interval_method", "interval_width")
-
-  if (!is.list(x)) {
-    rlang::abort(message = "point_interval_args must be a list or NULL")
-  }
-
-  provided_names <- names(x)
-  if (!is.null(provided_names)) {
-    invalid_names <- setdiff(provided_names, valid_arg_names)
-    if (length(invalid_names) > 0) {
-      rlang::warn(
-        message = paste(
-          "Ignoring invalid arguments in point_interval_args:",
-          paste(invalid_names, collapse = ", ")
-        )
-      )
-      x <- x[valid_arg_names]
-    }
-  }
+  checkmate::assert_list(
+    x = x,
+    any.missing = FALSE,
+    min.len = 1,
+    max.len = 3
+  )
+  checkmate::assert_names(
+    x = names(x),
+    type = "strict",
+    subset.of = c("point_method", "interval_method", "interval_width")
+  )
 
   result <- defaults
   result[names(x)] <- x
 
-  if (!is.null(result[["point_method"]])) {
-    if (
-      !is.character(result[["point_method"]]) ||
-      length(result[["point_method"]]) != 1
-    ) {
-      rlang::abort(message = "point_method must be a single character string")
-    }
-    if (!result[["point_method"]] %in% valid_point_methods) {
-      rlang::abort(
-        message = paste(
-          "point_method must be one of:",
-          paste(valid_point_methods, collapse = ", ")
-        )
-      )
-    }
-  }
+  checkmate::assert_string(
+    x = result[["point_method"]]
+  )
+  checkmate::assert_names(
+    x = result[["point_method"]],
+    subset.of = c("mean", "median")
+  )
 
-  if (!is.null(result[["interval_method"]])) {
-    if (
-      !is.character(result[["interval_method"]]) ||
-      length(result[["interval_method"]]) != 1
-    ) {
-      rlang::abort(message = "interval_method must be a single character string")
-    }
-    if (!result[["interval_method"]] %in% valid_interval_methods) {
-      rlang::abort(
-        message = paste(
-          "interval_method must be one of:",
-          paste(valid_interval_methods, collapse = ", ")
-        )
-      )
-    }
-  }
+  checkmate::assert_string(
+    x = result[["interval_method"]]
+  )
+  checkmate::assert_names(
+    x = result[["interval_method"]],
+    subset.of = c("hdci", "qi")
+  )
 
-  if (!is.null(result[["interval_width"]])) {
-    if (!is.numeric(result[["interval_width"]])) {
-      rlang::abort(message = "interval_width must be numeric")
-    }
-    if (
-      any(result[["interval_width"]] <= 0 | result[["interval_width"]] >= 1)
-    ) {
-      rlang::abort(
-        message = "interval_width values must be between 0 and 1 (exclusive)"
-      )
-    }
-  }
+  checkmate::assert_double(
+    x = result[["interval_width"]],
+    lower = 0 + sqrt(.Machine$double.eps),
+    upper = 1 - sqrt(.Machine$double.eps),
+    any.missing = FALSE
+  )
 
   return(result)
 }
@@ -253,66 +207,27 @@ test_densities <- function(x, test_len = NULL) {
 #' @noRd
 validate_posterior_rho_updf_input <- function(r, n, kappa, n_bins, max_iter) {
 
-  rules <- list(
-    r = list(
-      fun = function(x) abs(x) <= 1,
-      fail_msg = "between -1 and 1 (inclusive)",
-      round = FALSE
-    ),
-    n = list(
-      fun = function(x) x > 2,
-      fail_msg = "greater than 2",
-      round = TRUE
-    ),
-    kappa = list(
-      fun = function(x) x > 0,
-      fail_msg = "that is strictly positive",
-      round = FALSE
-    ),
-    n_bins = list(
-      fun = function(x) x >= 100,
-      fail_msg = "greater than or equal to 100",
-      round = TRUE
-    ),
-    max_iter = list(
-      fun = function(x) x >= 1,
-      fail_msg = "greater than or equal to 1",
-      round = TRUE
+  assert_double_wrap <- function(x, l = -Inf, u = Inf) {
+    return(
+      checkmate::assert_double(
+        x = x, lower = l, upper = u, any.missing = FALSE, len = 1
+      )
     )
-  )
-
-  process_param <- function(value, name, rule_list = rules) {
-    rule <- rule_list[[name]]
-    if (is.null(rule)) {
-      return(value)
-    }
-    if (
-      length(value) != 1L || !is.numeric(value) || !is.finite(value) ||
-      !rule[["fun"]](value)
-    ) {
-      rlang::abort(
-        message = paste0(
-          "Input '", name, "' must be a single finite value ",
-          rule[["fail_msg"]], "."
-        )
+  }
+  assert_integerish_wrap <- function(x, l = -Inf, u = Inf) {
+    return(
+      checkmate::assert_integerish(
+        x = x, lower = l, upper = u, any.missing = FALSE, len = 1, coerce = TRUE
       )
-    }
-    if (rule[["round"]] && value != round(value)) {
-      value <- round(value)
-      rlang::warn(
-        message = paste0(
-          "Input '", name, "' has been rounded to the nearest integer."
-        )
-      )
-    }
-    return(value)
+    )
   }
 
-  result <- purrr::imap(
-    .x = list(
-      r = r, n = n, kappa = kappa, n_bins = n_bins, max_iter = max_iter
-    ),
-    .f = process_param
+  result <- list(
+    r = assert_double_wrap(x = r, l = -1, u = 1),
+    n = assert_integerish_wrap(x = n, l = 3),
+    kappa = assert_double_wrap(x = kappa, l = 0 + sqrt(.Machine$double.eps)),
+    n_bins = assert_integerish_wrap(x = n_bins, l = 100),
+    max_iter = assert_integerish_wrap(x = max_iter, l = 1)
   )
 
   return(result)

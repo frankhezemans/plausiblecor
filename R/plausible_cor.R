@@ -106,7 +106,7 @@ run_plausible_cor <- function(
     covariate = covariate
   )
 
-  posterior_args <- validate_posterior_args(posterior_args)
+  posterior_args <- assert_posterior_args(posterior_args)
 
   result <- run_plausible_cor_pearson(
     data = data,
