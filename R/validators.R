@@ -88,7 +88,7 @@ validate_column_inputs <- function(
     checkmate::assert_names(
       x = names(data_frame),
       type = "strict",
-      must.include = unname(col_names),
+      must.include = unname(unlist(col_names)),
       .var.name = data_name
     )
   }

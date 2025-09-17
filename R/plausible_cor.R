@@ -17,13 +17,17 @@
 #'        parameter value.
 #' @param covariate_data Optional data frame containing covariate data (if not
 #'        in `mcmc_data`). Should contain one row per participant.
-#' @param draw_id String denoting the column with MCMC sample IDs.
-#' @param subject_id String denoting the column with subject IDs.
+#' @param draw_id String denoting the column with MCMC sample IDs in `mcmc_data`.
+#' @param subject_id String denoting the column with subject IDs. If both `mcmc_data`
+#'        and `covariate_data` are provided, this column name should be consistent
+#'        across data frames.
 #' @param parameter String denoting the column with the estimated model
 #'        parameter.
-#' @param covariate String denoting the column with the observed covariate.
-#' @param cor_method String indicating the method for computing the sample
-#'        correlation coefficient. Currently ignored (fixed to "pearson").
+#' @param covariate String denoting the column with the observed covariate of interest.
+#' @param confounders Optional character vector denoting the column(s) in `covariate_data`
+#'        that are confounding or "controlling" variables, that is, variables that are
+#'        associated with both `parameter` and `covariate`, and therefore contaminate
+#'        the direct association between `parameter` and `covariate`.
 #' @param posterior_args Named list of arguments passed to
 #'        [posterior_rho_updf()], which controls how the unnormalised posterior
 #'        density function is computed for each Pearson correlation coefficient.
@@ -54,14 +58,17 @@
 #'    parameters and observed covariate separately for each MCMC sample,
 #'    resulting in a set of plausible correlation values for the given sample
 #'    of subjects.
-#'    This handles uncertainty in the estimation of individual subjects'
+#'    If confounding variables are specified, the Pearson *partial* correlation
+#'    is computed, that is, the Pearson correlation between the model parameter
+#'    and covariate while accounting for the effects of confounding variables.
+#'    This step handles uncertainty in the estimation of individual subjects'
 #'    model parameters, and is suitable for inferences about the correlation
 #'    coefficient in the given sample of subjects. However, it does not account
 #'    for uncertainty in generalising from the sample to the population.
 #'
-#' 2. Second, it calculates the posterior density function for each correlation
-#'    using the analytical solution derived by Ly et al. (2018), resulting in
-#'    a set of plausible posterior distributions of the correlation.
+#' 2. Second, it calculates the posterior density function for each (partial)
+#'    correlation using the analytical solution derived by Ly et al. (2018),
+#'    resulting in a set of plausible posterior distributions of the correlation.
 #'    This handles uncertainty in generalizing from the sample to the
 #'    population, and is therefore suitable for inferences about the
 #'    correlation coefficient in the population.
@@ -81,6 +88,11 @@
 #' Pearson's correlation coefficient. *Statistica Neerlandica*, *72*, 4–13. DOI:
 #' [10.1111/stan.12111](https://doi.org/10.1111/stan.12111)
 #'
+#' Kucharský, S., Wagenmakers, E.-J., Van den Bergh, D., & Ly, A. (2023).
+#' Analytic posterior distributions and Bayes Factor for Pearson Partial
+#' Correlation. *PsyArXiv Preprints*. DOI:
+#' [10.31234/osf.io/6muwy](https://doi.org/10.31234/osf.io/6muwy)
+#'
 #' @export
 run_plausible_cor <- function(
     mcmc_data,
@@ -89,29 +101,29 @@ run_plausible_cor <- function(
     subject_id,
     parameter,
     covariate,
-    cor_method = "pearson",
+    confounders = NULL,
     posterior_args = NULL
 ) {
 
-  if (cor_method != "pearson") {
-    rlang::abort(message = "'cor_method' must be 'pearson'")
-  }
+  posterior_args <- assert_posterior_args(posterior_args)
+
+  column_names <- list(
+    draw_id = draw_id,
+    subject_id = subject_id,
+    parameter = parameter,
+    covariate = covariate,
+    confounders = confounders
+  )
 
   data <- prep_plausible_cor_data(
     mcmc_data = mcmc_data,
     covariate_data = covariate_data,
-    draw_id = draw_id,
-    subject_id = subject_id,
-    parameter = parameter,
-    covariate = covariate
+    column_names = column_names
   )
 
-  posterior_args <- assert_posterior_args(posterior_args)
-
-  result <- run_plausible_cor_pearson(
+  result <- run_plausible_cor_engine(
     data = data,
-    parameter = parameter,
-    covariate = covariate,
+    column_names = column_names,
     posterior_args = posterior_args
   )
 
@@ -122,27 +134,27 @@ run_plausible_cor <- function(
 }
 
 #' @noRd
-run_plausible_cor_pearson <- function(
+run_plausible_cor_engine <- function(
     data,
-    parameter,
-    covariate,
+    column_names,
     posterior_args
 ) {
 
   result <- data %>%
     dplyr::group_by(.data[[".draw"]]) %>%
     dplyr::summarise(
-      r = stats::cor(
-        x = .data[[parameter]],
-        y = .data[[covariate]],
-        use = "everything",
-        method = "pearson"
-      ),
-      n = sum(!is.na(.data[[parameter]]) & !is.na(.data[[covariate]])),
+      cor_result = list(compute_cor(
+        data = dplyr::pick(dplyr::everything()),
+        column_names = column_names
+      )),
       .groups = "drop"
     ) %>%
+    tidyr::unnest_wider(
+      dplyr::all_of("cor_result")
+    ) %>%
     dplyr::filter(
-      .data[["n"]] >= 3 & is.finite(.data[["r"]]) & abs(.data[["r"]]) <= 1
+      .data[["n"]] >= 3 & .data[["n"]] > (.data[["k"]] + 2) &
+        is.finite(.data[["r"]]) & abs(.data[["r"]]) <= 1
     )
 
   checkmate::assert_data_frame(
@@ -153,14 +165,17 @@ run_plausible_cor_pearson <- function(
 
   result <- result %>%
     dplyr::mutate(
-      posterior_updf = purrr::map2(
-        .x = .data[["r"]],
-        .y = .data[["n"]],
-        .f = function(r_val, n_val) {
+      posterior_updf = purrr::pmap(
+        .l = list(
+          .data[["r"]],
+          .data[["n"]],
+          .data[["k"]]
+        ),
+        .f = function(r_val, n_val, k_val) {
           rlang::exec(
             .fn = posterior_rho_updf,
             r = r_val,
-            n = n_val,
+            n = n_val - k_val,
             !!!posterior_args
           )
         }
@@ -170,6 +185,76 @@ run_plausible_cor_pearson <- function(
   return(result)
 
 }
+
+
+#' @noRd
+compute_cor <- function(
+    data,
+    column_names
+) {
+
+  parameter_values <- data[[column_names[["parameter"]]]]
+  covariate_values <- data[[column_names[["covariate"]]]]
+  confounders <- column_names[["confounders"]]
+  is_partial_cor <- !is.null(confounders)
+
+  if (!is_partial_cor) {
+    r <- stats::cor(
+      x = parameter_values,
+      y = covariate_values,
+      method = "pearson"
+    )
+    k <- 0
+  } else {
+    cor_mat <- stats::cor(
+      x = cbind(
+        parameter_values,
+        covariate_values,
+        data[confounders]
+      ),
+      method = "pearson"
+    )
+    pcor_mat <- corpcor::cor2pcor(cor_mat)
+    r <- pcor_mat[1, 2, drop = TRUE]
+    k <- length(confounders)
+  }
+
+  result <- list(
+    r = r,
+    n = nrow(data), # NB upstream check guarantees complete cases
+    k = k
+  )
+  return(result)
+
+}
+
+
+#' Print method for plausible correlation objects
+#'
+#' @param x An object of class "plausible_cor" (output from [run_plausible_cor()]).
+#' @param ... Additional arguments (currently unused).
+#'
+#' @export
+#' @method print plausible_cor
+print.plausible_cor <- function(x, ...) {
+
+  n_draws <- dplyr::n_distinct(x[[".draw"]])
+  n_valid <- nrow(x)
+
+  cat("<plausible_cor object>\n")
+  cat(" Number of posterior draws: ", n_draws, "\n", sep = "")
+  cat(" Valid correlations: ", n_valid, "\n", sep = "")
+
+  if ("r" %in% names(x)) {
+    r_preview <- utils::head(x[["r"]], n = 5)
+    cat(" Example r values: ", paste0(round(r_preview, digits = 3), collapse = ", "))
+    if (n_valid > 5) cat(", ...")
+    cat("\n")
+  }
+
+  invisible(x)
+}
+
 
 #' Summary method for plausible correlation objects
 #'
@@ -608,7 +693,7 @@ get_mean_posterior_rho <- function(.data) {
 #' sampling from the full posterior distribution over correlations for
 #' population-level inference.
 #'
-#' @param .data A data frame output by [run_plausible_cors()], containing one
+#' @param .data A data frame output by [run_plausible_cor()], containing one
 #'   row per MCMC draw with columns `.draw`, `r`, and `posterior_updf`.
 #' @param n_samples Integer specifying the number of quantiles to sample per
 #'   MCMC draw. Defaults to `1`.
@@ -804,26 +889,22 @@ summarise_samples <- function(
 prep_plausible_cor_data <- function(
     mcmc_data,
     covariate_data,
-    draw_id,
-    subject_id,
-    parameter,
-    covariate
+    column_names
 ) {
 
   validate_column_inputs(
-    col_names = c(
-      draw_id = draw_id,
-      subject_id = subject_id,
-      parameter = parameter,
-      covariate = covariate
-    )
+    col_names = column_names[c("draw_id", "subject_id", "parameter", "covariate")]
   )
 
   validate_column_inputs(
-    col_names = c(draw_id, subject_id, parameter),
+    col_names = column_names[c("draw_id", "subject_id", "parameter")],
     data_frame = mcmc_data,
     data_name = "mcmc_data"
   )
+
+  covariate <- column_names[["covariate"]]
+  subject_id <- column_names[["subject_id"]]
+  confounders <- column_names[["confounders"]]
 
   if (covariate %in% names(mcmc_data)) {
 
@@ -832,13 +913,19 @@ prep_plausible_cor_data <- function(
   } else if (!is.null(covariate_data)) {
 
     validate_column_inputs(
-      col_names = c(subject_id, covariate),
+      col_names = c(
+        subject_id = subject_id,
+        covariate = covariate,
+        if (!is.null(confounders)) {
+          stats::setNames(confounders, paste0("confounder_", confounders))
+        }
+      ),
       data_frame = covariate_data,
       data_name = "covariate_data"
     )
 
     covariate_data_clean <- covariate_data %>%
-      dplyr::select(dplyr::all_of(c(subject_id, covariate))) %>%
+      dplyr::select(dplyr::all_of(c(subject_id, covariate, confounders))) %>%
       dplyr::distinct()
 
     n_subs <- length(unique(covariate_data_clean[[subject_id]]))
@@ -857,20 +944,27 @@ prep_plausible_cor_data <- function(
   } else {
     rlang::abort(
       message = paste0(
-        "Covariate column not found in 'mcmc_data', ",
+        "Covariate column '", covariate, "' not found in 'mcmc_data', ",
         "and no 'covariate_data' provided."
       )
     )
   }
 
+  keep_cols <- c(
+    ".draw",
+    column_names[["parameter"]],
+    covariate,
+    confounders
+  )
+
   data <- data %>%
-    dplyr::rename(dplyr::all_of(c(.draw = draw_id))) %>%
-    dplyr::select(dplyr::all_of(c(".draw", parameter, covariate)))
+    dplyr::rename(dplyr::all_of(c(.draw = column_names[["draw_id"]]))) %>%
+    dplyr::select(dplyr::all_of(keep_cols))
 
   if (anyNA(data)) {
     rlang::warn(message = paste0(
       "Removing any rows with missing values in ",
-      paste(draw_id, parameter, covariate, collapse = ", ")
+      paste(keep_cols, collapse = ", ")
     ))
     data <- tidyr::drop_na(data)
   }

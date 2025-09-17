@@ -11,7 +11,7 @@ run_plausible_cor(
   subject_id,
   parameter,
   covariate,
-  cor_method = "pearson",
+  confounders = NULL,
   posterior_args = NULL
 )
 }
@@ -23,17 +23,21 @@ parameter value.}
 \item{covariate_data}{Optional data frame containing covariate data (if not
 in \code{mcmc_data}). Should contain one row per participant.}
 
-\item{draw_id}{String denoting the column with MCMC sample IDs.}
+\item{draw_id}{String denoting the column with MCMC sample IDs in \code{mcmc_data}.}
 
-\item{subject_id}{String denoting the column with subject IDs.}
+\item{subject_id}{String denoting the column with subject IDs. If both \code{mcmc_data}
+and \code{covariate_data} are provided, this column name should be consistent
+across data frames.}
 
 \item{parameter}{String denoting the column with the estimated model
 parameter.}
 
-\item{covariate}{String denoting the column with the observed covariate.}
+\item{covariate}{String denoting the column with the observed covariate of interest.}
 
-\item{cor_method}{String indicating the method for computing the sample
-correlation coefficient. Currently ignored (fixed to "pearson").}
+\item{confounders}{Optional character vector denoting the column(s) in \code{covariate_data}
+that are confounding or "controlling" variables, that is, variables that are
+associated with both \code{parameter} and \code{covariate}, and therefore contaminate
+the direct association between \code{parameter} and \code{covariate}.}
 
 \item{posterior_args}{Named list of arguments passed to
 \code{\link[=posterior_rho_updf]{posterior_rho_updf()}}, which controls how the unnormalised posterior
@@ -80,13 +84,16 @@ exploring individual differences in cognitive-model-based neuroscience:
 parameters and observed covariate separately for each MCMC sample,
 resulting in a set of plausible correlation values for the given sample
 of subjects.
-This handles uncertainty in the estimation of individual subjects'
+If confounding variables are specified, the Pearson \emph{partial} correlation
+is computed, that is, the Pearson correlation between the model parameter
+and covariate while accounting for the effects of confounding variables.
+This step handles uncertainty in the estimation of individual subjects'
 model parameters, and is suitable for inferences about the correlation
 coefficient in the given sample of subjects. However, it does not account
 for uncertainty in generalising from the sample to the population.
-\item Second, it calculates the posterior density function for each correlation
-using the analytical solution derived by Ly et al. (2018), resulting in
-a set of plausible posterior distributions of the correlation.
+\item Second, it calculates the posterior density function for each (partial)
+correlation using the analytical solution derived by Ly et al. (2018),
+resulting in a set of plausible posterior distributions of the correlation.
 This handles uncertainty in generalizing from the sample to the
 population, and is therefore suitable for inferences about the
 correlation coefficient in the population.
@@ -106,4 +113,9 @@ neuroscience. \emph{Computational models of brain and behavior}, 467-479. DOI:
 Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Analytic posteriors for
 Pearson's correlation coefficient. \emph{Statistica Neerlandica}, \emph{72}, 4–13. DOI:
 \href{https://doi.org/10.1111/stan.12111}{10.1111/stan.12111}
+
+Kucharský, S., Wagenmakers, E.-J., Van den Bergh, D., & Ly, A. (2023).
+Analytic posterior distributions and Bayes Factor for Pearson Partial
+Correlation. \emph{PsyArXiv Preprints}. DOI:
+\href{https://doi.org/10.31234/osf.io/6muwy}{10.31234/osf.io/6muwy}
 }
