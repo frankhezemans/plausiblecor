@@ -4,10 +4,13 @@
 \alias{get_mean_posterior_rho}
 \title{Compute mean posterior correlation density}
 \usage{
-get_mean_posterior_rho(.data)
+get_mean_posterior_rho(.data, dx = NULL)
 }
 \arguments{
 \item{.data}{Data frame output from \code{\link[=get_posterior_rho_densities]{get_posterior_rho_densities()}}.}
+
+\item{dx}{Grid spacing (step size). If \code{NULL} (default), it is estimated
+from the unique values of \code{x} (grid points) using \code{\link[=diff]{diff()}}.}
 }
 \value{
 A tibble with columns \code{x} (grid points) and \code{density}
@@ -18,4 +21,6 @@ Helper function that computes the mean posterior density across MCMC samples,
 based on the evaluated densities on a shared grid. Typical users would not
 have to call this function, instead relying on \code{\link[=summarise_plausible_cor]{summarise_plausible_cor()}},
 \code{\link[=compare_plausible_cors]{compare_plausible_cors()}}, and \code{\link[=plot_population_cor]{plot_population_cor()}}.
+Accepts an optional \code{dx} argument to avoid relying on floating-point
+differences.
 }

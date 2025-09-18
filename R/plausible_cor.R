@@ -58,7 +58,6 @@
 #'  * `max_iter` Integer denoting the maximum number of iterations
 #'        (attempts) to obtain a posterior density function for a given MCMC
 #'        sample. Default is `1e7`.
-#'  * `...` additional arguments passed forward to [stats::approxfun()].
 #'
 #' @return A [tibble::tbl_df-class] with one row per MCMC sample containing:
 #'   \item{.draw}{The MCMC sample ID}
@@ -291,15 +290,18 @@ compute_cor <- function(
 #'        the ROPE. Defaults to `NULL` in which case the ROPE is ignored. See
 #'        Gignac & Szodorai (2016) for guidance on what constitutes a correlation
 #'        coefficient practically equivalent to null.
+#' @param posterior_grid_spacing For summarising the population-level plausible
+#'        correlation: The step size used to discretise each MCMC sample's
+#'        posterior density function into a grid of posterior density values.
 #'
 #' @return A [tibble::tbl_df-class] with one row per summary type
 #'         ("sample" and "posterior") and credible interval width, containing:
 #'   \item{type}{Whether the row corresponds to the sample-based or
-#'         posterior-based summary}
-#'   \item{mean / median}{Point estimate of the correlation coefficient}
-#'   \item{lower / upper}{Credible interval bounds for each `interval_width`}
+#'         population-based summary.}
+#'   \item{mean / median}{Point estimate of the correlation coefficient.}
+#'   \item{lower / upper}{Credible interval bounds for each `interval_width`.}
 #'   \item{width}{If the length of `interval_width` is greater than 1: The width of the credible interval.}
-#'   \item{p_dir}{Directional probability (proportion of mass > 0 or < 0)}
+#'   \item{p_dir}{Directional probability (proportion of mass > 0 or < 0, whichever is greater).}
 #'   \item{p_rope}{If specified: The proportion contained within the ROPE.}
 #'
 #' @references
@@ -311,7 +313,8 @@ compute_cor <- function(
 summarise_plausible_cor <- function(
     .data,
     point_interval_args = NULL,
-    rope_range = NULL
+    rope_range = NULL,
+    posterior_grid_spacing = 1e-3
 ) {
 
   validate_column_inputs(
@@ -336,11 +339,10 @@ summarise_plausible_cor <- function(
     dplyr::relocate(dplyr::all_of("type"))
 
   mean_posterior_rho <- .data %>%
-    get_posterior_rho_densities() %>%
+    get_posterior_rho_densities(grid_spacing = posterior_grid_spacing) %>%
     get_mean_posterior_rho()
 
   rho_grid <- mean_posterior_rho[["x"]]
-  dx <- diff(rho_grid)[1]
   mean_density <- mean_posterior_rho[["mean_density"]]
 
   population_point <- get_point_estimate(
@@ -361,8 +363,8 @@ summarise_plausible_cor <- function(
       type = "population",
       !!point_interval_args[["point_method"]] := population_point,
       p_dir = max(
-        sum(mean_density[rho_grid > 0]) * dx,
-        sum(mean_density[rho_grid < 0]) * dx
+        sum(mean_density[rho_grid > 0]) * posterior_grid_spacing,
+        sum(mean_density[rho_grid < 0]) * posterior_grid_spacing
       )
     ) %>%
     dplyr::relocate(dplyr::all_of("type"))
@@ -372,7 +374,7 @@ summarise_plausible_cor <- function(
       dplyr::mutate(
         p_rope = sum(
           mean_density[rho_grid >= rope_range[1] & rho_grid <= rope_range[2]]
-        ) * dx
+        ) * posterior_grid_spacing
       )
   }
 
@@ -588,7 +590,13 @@ get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
     data_name = ".data"
   )
 
-  rho_grid <- seq(from = -0.999, to = 0.999, by = grid_spacing)
+  max_abs_r <- 0.999
+  n_steps <- floor(max_abs_r / grid_spacing)
+  rho_grid <- seq(
+    from = -n_steps * grid_spacing,
+    to = n_steps * grid_spacing,
+    by = grid_spacing
+  )
 
   single_density_grid <- function(
     draw_id, r_val, updf, grid = rho_grid, dx = grid_spacing
@@ -633,14 +641,18 @@ get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
 #' based on the evaluated densities on a shared grid. Typical users would not
 #' have to call this function, instead relying on [summarise_plausible_cor()],
 #' [compare_plausible_cors()], and [plot_population_cor()].
+#' Accepts an optional `dx` argument to avoid relying on floating-point
+#' differences.
 #'
 #' @param .data Data frame output from [get_posterior_rho_densities()].
+#' @param dx Grid spacing (step size). If `NULL` (default), it is estimated
+#'        from the unique values of `x` (grid points) using [diff()].
 #'
 #' @return A tibble with columns `x` (grid points) and `density`
 #'         (mean posterior density).
 #'
 #' @export
-get_mean_posterior_rho <- function(.data) {
+get_mean_posterior_rho <- function(.data, dx = NULL) {
 
   validate_column_inputs(
     col_names = c(".draw", "r", "x", "density"),
@@ -654,7 +666,17 @@ get_mean_posterior_rho <- function(.data) {
       mean_density = mean(.data[["density"]]),
       .groups = "drop"
     )
-  dx <- diff(result[["x"]])[1]
+
+  if (is.null(dx)) {
+    dxs <- diff(sort(unique(result[["x"]])))
+    dxs_rounded <- round(dxs, digits = 10)
+    if (length(unique(dxs_rounded)) > 1) {
+      rlang::warn(
+        message = "Grid appears irregular; using first diff() as dx."
+      )
+    }
+    dx <- dxs_rounded[1]
+  }
 
   result <- result %>%
     dplyr::mutate(

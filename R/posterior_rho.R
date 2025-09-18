@@ -24,7 +24,6 @@
 #' @param max_iter Integer. Maximum number of iterations (attempts) to solve
 #'        generalised hypergeometric functions that are necessary to compute
 #'        the posterior density. Default is `1e7`. See details.
-#' @param ... Additional arguments passed to [stats::approxfun()].
 #'
 #' @return A function that evaluates the unnormalized posterior density at any
 #'         correlation value between `-1` and `1`.
@@ -74,7 +73,7 @@
 posterior_rho_updf <- function(
     r, n, kappa = 1,
     alternative = c("two.sided", "greater", "less"),
-    n_bins = 1e3, max_iter = 1e7, ...
+    n_bins = 1e3, max_iter = 1e7
 ) {
 
   alternative <- rlang::arg_match(alternative)
@@ -127,7 +126,27 @@ posterior_rho_updf <- function(
     )
   }
 
-  result <- stats::approxfun(x = rho_grid, y = d, na.rm = TRUE, ...)
+  base_fun <- stats::approxfun(
+    x = rho_grid, y = d, method = "linear", yleft = 0, yright = 0, na.rm = TRUE
+  )
+
+  if (alternative == "two.sided") {
+    result <- base_fun
+  } else {
+    if (alternative == "greater") {
+      result <- function(x) {
+        y <- base_fun(x)
+        y[x < 0] <- 0
+        return(y)
+      }
+    } else {
+      result <- function(x) {
+        y <- base_fun(x)
+        y[x > 0] <- 0
+        return(y)
+      }
+    }
+  }
 
   return(result)
 
@@ -360,18 +379,28 @@ create_rho_grid <- function(r, n, n_bins) {
 
   n_bins <- max(n_bins, 100)
 
-  n_base <- round(n_bins * 0.7)
-  base_grid <- seq(from = -0.999, to = 0.999, length.out = n_base)
+  max_abs_r <- 0.999
+  grid_spacing <- 2 * max_abs_r / (round(n_bins * 0.7) - 1)
+  n_steps <- floor(max_abs_r / grid_spacing)
+  base_grid <- seq(
+    from = -n_steps * grid_spacing,
+    to = n_steps * grid_spacing,
+    by = grid_spacing
+  )
 
-  n_peak <- n_bins - n_base
-  unit_grid <- stats::qlogis(
-    p = seq(from = 0, to = 1, length.out = n_peak + 2)
-  )
-  unit_grid <- unit_grid[-c(1, length(unit_grid))]
-  peak_grid <- tanh(
-    atanh(r) + unit_grid / sqrt(n)
-  )
-  peak_grid <- pmax(-0.999, pmin(0.999, peak_grid))
+  n_peak <- n_bins - length(base_grid)
+  if (n_peak > 0) {
+    unit_grid <- stats::qlogis(
+      p = seq(from = 0, to = 1, length.out = n_peak + 2)
+    )
+    unit_grid <- unit_grid[-c(1, length(unit_grid))]
+    peak_grid <- tanh(
+      atanh(r) + unit_grid / sqrt(n)
+    )
+    peak_grid <- pmax(-max_abs_r, pmin(max_abs_r, peak_grid))
+  } else {
+    peak_grid <- numeric(0)
+  }
 
   result <- sort(unique(c(
     base_grid, peak_grid

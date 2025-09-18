@@ -72,7 +72,6 @@ unnormalised posterior density values are computed. Default is \code{1e3}.
 \item \code{max_iter} Integer denoting the maximum number of iterations
 (attempts) to obtain a posterior density function for a given MCMC
 sample. Default is \code{1e7}.
-\item \code{...} additional arguments passed forward to \code{\link[stats:approxfun]{stats::approxfun()}}.
 }}
 }
 \value{

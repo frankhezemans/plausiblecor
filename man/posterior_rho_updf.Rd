@@ -11,8 +11,7 @@ posterior_rho_updf(
   kappa = 1,
   alternative = c("two.sided", "greater", "less"),
   n_bins = 1000,
-  max_iter = 1e+07,
-  ...
+  max_iter = 1e+07
 )
 }
 \arguments{
@@ -38,8 +37,6 @@ is \code{1000}.}
 \item{max_iter}{Integer. Maximum number of iterations (attempts) to solve
 generalised hypergeometric functions that are necessary to compute
 the posterior density. Default is \code{1e7}. See details.}
-
-\item{...}{Additional arguments passed to \code{\link[stats:approxfun]{stats::approxfun()}}.}
 }
 \value{
 A function that evaluates the unnormalized posterior density at any

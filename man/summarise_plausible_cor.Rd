@@ -4,7 +4,12 @@
 \alias{summarise_plausible_cor}
 \title{Summarise plausible correlation estimates}
 \usage{
-summarise_plausible_cor(.data, point_interval_args = NULL, rope_range = NULL)
+summarise_plausible_cor(
+  .data,
+  point_interval_args = NULL,
+  rope_range = NULL,
+  posterior_grid_spacing = 0.001
+)
 }
 \arguments{
 \item{.data}{A data frame output from \code{\link[=run_plausible_cor]{run_plausible_cor()}}.}
@@ -27,16 +32,20 @@ is used to compute the proportion of the distribution contained within
 the ROPE. Defaults to \code{NULL} in which case the ROPE is ignored. See
 Gignac & Szodorai (2016) for guidance on what constitutes a correlation
 coefficient practically equivalent to null.}
+
+\item{posterior_grid_spacing}{For summarising the population-level plausible
+correlation: The step size used to discretise each MCMC sample's
+posterior density function into a grid of posterior density values.}
 }
 \value{
 A \link[tibble:tbl_df-class]{tibble::tbl_df} with one row per summary type
 ("sample" and "posterior") and credible interval width, containing:
 \item{type}{Whether the row corresponds to the sample-based or
-posterior-based summary}
-\item{mean / median}{Point estimate of the correlation coefficient}
-\item{lower / upper}{Credible interval bounds for each \code{interval_width}}
+population-based summary.}
+\item{mean / median}{Point estimate of the correlation coefficient.}
+\item{lower / upper}{Credible interval bounds for each \code{interval_width}.}
 \item{width}{If the length of \code{interval_width} is greater than 1: The width of the credible interval.}
-\item{p_dir}{Directional probability (proportion of mass > 0 or < 0)}
+\item{p_dir}{Directional probability (proportion of mass > 0 or < 0, whichever is greater).}
 \item{p_rope}{If specified: The proportion contained within the ROPE.}
 }
 \description{
