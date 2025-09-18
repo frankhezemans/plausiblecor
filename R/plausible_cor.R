@@ -37,8 +37,16 @@
 #'        that are confounding or "controlling" variables, that is, variables that are
 #'        associated with both `parameter` and `covariate`, and therefore contaminate
 #'        the direct association between `parameter` and `covariate`.
+#' @param alternative Character string specifying the alternative hypothesis,
+#'        which influences how the unnormalised posterior density function is
+#'        computed for each Pearson correlation coefficient:
+#'   \describe{
+#'     \item{"two.sided"}{ (default) Prior is supported on \eqn{\left[-1, 1\right]}}
+#'     \item{"greater"}{ Prior truncated to \eqn{\left[0, 1\right]} and renormalised}
+#'     \item{"less"}{ Prior truncated to \eqn{\left[-1, 0\right]} and renormalised}
+#'   }
 #' @param posterior_args Named list of arguments passed to
-#'        [posterior_rho_updf()], which controls how the unnormalised posterior
+#'        [posterior_rho_updf()], which influence how the unnormalised posterior
 #'        density function is computed for each Pearson correlation coefficient.
 #'        The following arguments can be included:
 #'  * `kappa` Numeric value controlling the "concentration" of the
@@ -111,9 +119,12 @@ run_plausible_cor <- function(
     parameter,
     covariate,
     confounders = NULL,
+    alternative = c("two.sided", "greater", "less"),
     posterior_args = NULL
 ) {
 
+  posterior_args <- posterior_args %||% list()
+  posterior_args[["alternative"]] <- rlang::arg_match(alternative)
   posterior_args <- assert_posterior_args(posterior_args)
 
   column_names <- list(
@@ -131,7 +142,7 @@ run_plausible_cor <- function(
     )
     if (column_names[["subject_id"]] != "subjects") {
       rlang::warn(
-        paste0(
+        message = paste0(
           "Overriding 'subject_id' input. ",
           "For 'emc' objects this is always 'subjects'."
         )

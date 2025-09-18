@@ -13,6 +13,12 @@
 #' @param kappa Numeric value. Parameter controlling the "concentration" of the
 #'        stretched beta prior on the correlation coefficient (see details
 #'        below). Default is `1`, resulting in a uniform prior.
+#' @param alternative Character string specifying the alternative hypothesis:
+#'   \describe{
+#'     \item{"two.sided"}{ (default) Prior is supported on \eqn{\left[-1, 1\right]}}
+#'     \item{"greater"}{ Prior truncated to \eqn{\left[0, 1\right]} and renormalised}
+#'     \item{"less"}{ Prior truncated to \eqn{\left[-1, 0\right]} and renormalised}
+#'   }
 #' @param n_bins Integer. Number of grid points for the approximation, default
 #'        is `1000`.
 #' @param max_iter Integer. Maximum number of iterations (attempts) to solve
@@ -48,7 +54,9 @@
 #' The prior is a stretched beta distribution with shape parameters
 #' \eqn{\alpha = \beta = \frac{1}{\kappa}}, scaled to the interval (-1, 1). This
 #' creates a symmetric distribution centered at zero and its domain stretched to
-#' cover the full range of the correlation coefficient.
+#' cover the full range of the correlation coefficient. The prior can optionally
+#' also be truncated (and renormalised) to support a directional (strictly positive or negative)
+#' alternative hypothesis.
 #'
 #' This function was adapted from code previously released with the Dynamic
 #' Models of Choice toolbox (Heathcote et al., 2019).
@@ -64,8 +72,12 @@
 #'
 #' @export
 posterior_rho_updf <- function(
-    r, n, kappa = 1, n_bins = 1e3, max_iter = 1e7, ...
+    r, n, kappa = 1,
+    alternative = c("two.sided", "greater", "less"),
+    n_bins = 1e3, max_iter = 1e7, ...
 ) {
+
+  alternative <- rlang::arg_match(alternative)
 
   params <- validate_posterior_rho_updf_input(r, n, kappa, n_bins, max_iter)
   r <- params[["r"]]
@@ -91,9 +103,9 @@ posterior_rho_updf <- function(
   rho_grid <- create_rho_grid(r, n, n_bins)
 
   if (abs(r) < sqrt(.Machine$double.eps)) {
-    d <- posterior_rho_jeffreys(r, n, rho_grid, kappa, max_iter)
+    d <- posterior_rho_jeffreys(r, n, rho_grid, kappa, alternative, max_iter)
   } else {
-    d <- posterior_rho_exact(r, n, rho_grid, kappa, max_iter)
+    d <- posterior_rho_exact(r, n, rho_grid, kappa, alternative, max_iter)
   }
 
   if (any(!is.finite(d))) {
@@ -127,15 +139,16 @@ posterior_rho_updf <- function(
 #' @param n Numeric value. The sample size.
 #' @param rho_grid Numeric vector. Grid of correlation values to evaluate.
 #' @param kappa Numeric value. Prior concentration parameter.
+#' @param alternative Character string specifying the alternative hypothesis.
 #' @param max_iter Integer. Maximum number of iterations (attempts) to solve
 #'        generalised hypergeometric functions.
 #'
 #' @return Numeric vector of unnormalized posterior density values.
 #' @noRd
-posterior_rho_exact <- function(r, n, rho_grid, kappa, max_iter) {
+posterior_rho_exact <- function(r, n, rho_grid, kappa, alternative, max_iter) {
   result <- bf_rho_exact(r, n, kappa, max_iter) *
     likelihood_rho_exact(r, n, rho_grid, max_iter) *
-    prior_rho(rho_grid, kappa)
+    prior_rho(rho_grid, kappa, alternative)
   return(result)
 }
 
@@ -148,15 +161,16 @@ posterior_rho_exact <- function(r, n, rho_grid, kappa, max_iter) {
 #' @param n Numeric value. The sample size.
 #' @param rho_grid Numeric vector. Grid of correlation values to evaluate.
 #' @param kappa Numeric value. Prior concentration parameter.
+#' @param alternative Character string specifying the alternative hypothesis.
 #' @param max_iter Integer. Maximum number of iterations (attempts) to solve
 #'        generalised hypergeometric functions.
 #'
 #' @return Numeric vector of unnormalized posterior density values.
 #' @noRd
-posterior_rho_jeffreys <- function(r, n, rho_grid, kappa, max_iter) {
+posterior_rho_jeffreys <- function(r, n, rho_grid, kappa, alternative, max_iter) {
   result <- bf_rho_jeffreys(r, n, kappa, max_iter) *
     likelihood_rho_jeffreys(r, n, rho_grid) *
-    prior_rho(rho_grid, kappa)
+    prior_rho(rho_grid, kappa, alternative)
   return(result)
 }
 
@@ -285,20 +299,39 @@ likelihood_rho_jeffreys <- function(r, n, rho_grid) {
 #' Calculate prior density for correlation coefficient
 #'
 #' @description
-#' Calculates the stretched beta prior density for the correlation coefficient.
+#' Calculates the stretched beta prior density for the correlation coefficient,
+#' with optional truncation for directional alternatives.
 #'
 #' @param rho_grid Numeric vector. Grid of correlation values to evaluate.
 #' @param kappa Numeric value. Prior concentration parameter.
+#' @param alternative Character string specifying the alternative hypothesis.
 #'
 #' @return Numeric vector of prior density values.
 #' @noRd
-prior_rho <- function(rho_grid, kappa) {
-  result <- (1 / 2) *
+prior_rho <- function(rho_grid, kappa, alternative) {
+
+  base_density <- (1 / 2) *
     stats::dbeta(
       x = (rho_grid + 1) / 2,
       shape1 = 1 / kappa,
       shape2 = 1 / kappa
     )
+
+  if (alternative == "two.sided") {
+    result <- base_density
+  } else {
+    result <- numeric(length(rho_grid)) # initialise with zero density
+    if (alternative == "greater") {
+      idx <- rho_grid >= 0
+    } else {
+      idx <- rho_grid <= 0
+    }
+    # overwrite valid rho values with base density, normalised to account for
+    # truncation by multiplying by 2 (NB with base prior being symmetric around
+    # zero, normalisation constant for truncating at 0 is always exactly 1/2).
+    result[idx] <- 2 * base_density[idx]
+  }
+
   return(result)
 }
 

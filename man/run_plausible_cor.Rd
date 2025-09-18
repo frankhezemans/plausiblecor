@@ -12,6 +12,7 @@ run_plausible_cor(
   parameter,
   covariate,
   confounders = NULL,
+  alternative = c("two.sided", "greater", "less"),
   posterior_args = NULL
 )
 }
@@ -48,8 +49,17 @@ that are confounding or "controlling" variables, that is, variables that are
 associated with both \code{parameter} and \code{covariate}, and therefore contaminate
 the direct association between \code{parameter} and \code{covariate}.}
 
+\item{alternative}{Character string specifying the alternative hypothesis,
+which influences how the unnormalised posterior density function is
+computed for each Pearson correlation coefficient:
+\describe{
+\item{"two.sided"}{ (default) Prior is supported on \eqn{\left[-1, 1\right]}}
+\item{"greater"}{ Prior truncated to \eqn{\left[0, 1\right]} and renormalised}
+\item{"less"}{ Prior truncated to \eqn{\left[-1, 0\right]} and renormalised}
+}}
+
 \item{posterior_args}{Named list of arguments passed to
-\code{\link[=posterior_rho_updf]{posterior_rho_updf()}}, which controls how the unnormalised posterior
+\code{\link[=posterior_rho_updf]{posterior_rho_updf()}}, which influence how the unnormalised posterior
 density function is computed for each Pearson correlation coefficient.
 The following arguments can be included:
 \itemize{

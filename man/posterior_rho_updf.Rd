@@ -5,7 +5,15 @@
 \title{Calculate Unnormalised Posterior Density for Pearson's Correlation
 Coefficient}
 \usage{
-posterior_rho_updf(r, n, kappa = 1, n_bins = 1000, max_iter = 1e+07, ...)
+posterior_rho_updf(
+  r,
+  n,
+  kappa = 1,
+  alternative = c("two.sided", "greater", "less"),
+  n_bins = 1000,
+  max_iter = 1e+07,
+  ...
+)
 }
 \arguments{
 \item{r}{Numeric value. The observed sample correlation coefficient, must be
@@ -16,6 +24,13 @@ between \code{-1} and \code{1}.}
 \item{kappa}{Numeric value. Parameter controlling the "concentration" of the
 stretched beta prior on the correlation coefficient (see details
 below). Default is \code{1}, resulting in a uniform prior.}
+
+\item{alternative}{Character string specifying the alternative hypothesis:
+\describe{
+\item{"two.sided"}{ (default) Prior is supported on \eqn{\left[-1, 1\right]}}
+\item{"greater"}{ Prior truncated to \eqn{\left[0, 1\right]} and renormalised}
+\item{"less"}{ Prior truncated to \eqn{\left[-1, 0\right]} and renormalised}
+}}
 
 \item{n_bins}{Integer. Number of grid points for the approximation, default
 is \code{1000}.}
@@ -61,7 +76,9 @@ Any undefined or non-finite estimate of the posterior density is treated as
 The prior is a stretched beta distribution with shape parameters
 \eqn{\alpha = \beta = \frac{1}{\kappa}}, scaled to the interval (-1, 1). This
 creates a symmetric distribution centered at zero and its domain stretched to
-cover the full range of the correlation coefficient.
+cover the full range of the correlation coefficient. The prior can optionally
+also be truncated (and renormalised) to support a directional (strictly positive or negative)
+alternative hypothesis.
 
 This function was adapted from code previously released with the Dynamic
 Models of Choice toolbox (Heathcote et al., 2019).

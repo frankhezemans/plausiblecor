@@ -5,8 +5,8 @@
 #' @description
 #' Internal helper function to validate the structure and contents of the
 #' posterior_args parameter passed to functions that use [posterior_rho_updf()].
-#' Allowed arguments are: kappa, n_bins, max_iter, and [stats::approxfun()]
-#' arguments (method, yleft, yright, rule, f, ties).
+#' Allowed arguments are: kappa, alternative, n_bins, max_iter, and
+#' [stats::approxfun()] arguments (method, yleft, yright, rule, f, ties).
 #'
 #' @param posterior_args A named list of arguments or NULL
 #'
@@ -19,23 +19,20 @@ assert_posterior_args <- function(posterior_args) {
     return(NULL)
   }
 
-  checkmate::assert(
-    checkmate::assert_list(
-      x = posterior_args,
-      any.missing = FALSE,
-      min.len = 1
-    ),
-    checkmate::assert_names(
-      x = names(posterior_args),
-      type = "strict",
-      subset.of = c(
-        # posterior_rho_updf args
-        "kappa", "n_bins", "max_iter",
-        # stats::approxfun args
-        "method", "yleft", "yright", "rule", "f", "ties"
-      )
-    ),
-    combine = "and"
+  checkmate::assert_list(
+    x = posterior_args,
+    any.missing = FALSE,
+    min.len = 1
+  )
+  checkmate::assert_names(
+    x = names(posterior_args),
+    type = "strict",
+    subset.of = c(
+      # posterior_rho_updf args
+      "kappa", "alternative", "n_bins", "max_iter",
+      # stats::approxfun args
+      "method", "yleft", "yright", "rule", "f", "ties"
+    )
   )
 
   return(posterior_args)
