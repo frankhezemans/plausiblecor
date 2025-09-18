@@ -15,12 +15,21 @@
 #' @param mcmc_data Data frame of MCMC samples in long format, where each row
 #'        represents a unique combination of MCMC draw, subject, and
 #'        parameter value.
+#'        Alternatively, an object of class `"emc"` can be provided, which corresponds
+#'        to a model fit using the `EMC2` package ([EMC2::EMC2()]). In this case,
+#'        [EMC2::parameters()] is used to extract subject-wise MCMC samples of the
+#'        model parameters.
 #' @param covariate_data Optional data frame containing covariate data (if not
-#'        in `mcmc_data`). Should contain one row per participant.
+#'        already in `mcmc_data`). Should contain one row per participant.
 #' @param draw_id String denoting the column with MCMC sample IDs in `mcmc_data`.
+#'        If `mcmc_data` is an object of class `"emc"`, the provided `draw_id` is
+#'        used to create an MCMC sample ID column, since the output of
+#'        [EMC2::parameters()] does not include such a column by default.
 #' @param subject_id String denoting the column with subject IDs. If both `mcmc_data`
 #'        and `covariate_data` are provided, this column name should be consistent
 #'        across data frames.
+#'        If `mcmc_data` is an object of class `"emc"`, `subject_id` must be
+#'        equal to `"subjects"`.
 #' @param parameter String denoting the column with the estimated model
 #'        parameter.
 #' @param covariate String denoting the column with the observed covariate of interest.
@@ -114,6 +123,22 @@ run_plausible_cor <- function(
     covariate = covariate,
     confounders = confounders
   )
+
+  if (inherits(mcmc_data, "emc")) {
+    mcmc_data <- prep_emc_data(
+      mcmc_data = mcmc_data,
+      column_names = column_names
+    )
+    if (column_names[["subject_id"]] != "subjects") {
+      rlang::warn(
+        paste0(
+          "Overriding 'subject_id' input. ",
+          "For 'emc' objects this is always 'subjects'."
+        )
+      )
+      column_names[["subject_id"]] <- "subjects"
+    }
+  }
 
   data <- prep_plausible_cor_data(
     mcmc_data = mcmc_data,
@@ -885,6 +910,7 @@ summarise_samples <- function(
 
 }
 
+
 #' @noRd
 prep_plausible_cor_data <- function(
     mcmc_data,
@@ -973,5 +999,46 @@ prep_plausible_cor_data <- function(
     dplyr::arrange(.data[[".draw"]])
 
   return(data)
+
+}
+
+#' @noRd
+prep_emc_data <- function(
+    mcmc_data,
+    column_names
+) {
+
+  rlang::check_installed(
+    pkg = "EMC2",
+    reason = "'EMC2' must be installed if input `mcmc_data` is of class 'emc'."
+  )
+
+  mcmc_data <- EMC2::parameters(mcmc_data, selection = "alpha")
+
+  validate_column_inputs(
+    col_names = c("subjects", column_names[["parameter"]]),
+    data_frame = mcmc_data,
+    data_name = "mcmc_data"
+  )
+
+  n_draws <- nrow(mcmc_data) / dplyr::n_distinct(mcmc_data[["subjects"]])
+
+  mcmc_data <- mcmc_data %>%
+    dplyr::group_by(
+      .data[["subjects"]]
+    ) %>%
+    dplyr::mutate(
+      .draw = seq_len(n_draws)
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::relocate(
+      .data[[".draw"]],
+      .before = 1
+    ) %>%
+    dplyr::rename(
+      dplyr::all_of(c(.draw = column_names[["draw_id"]]))
+    )
+
+  return(mcmc_data)
 
 }

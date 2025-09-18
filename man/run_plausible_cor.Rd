@@ -18,16 +18,25 @@ run_plausible_cor(
 \arguments{
 \item{mcmc_data}{Data frame of MCMC samples in long format, where each row
 represents a unique combination of MCMC draw, subject, and
-parameter value.}
+parameter value.
+Alternatively, an object of class \code{"emc"} can be provided, which corresponds
+to a model fit using the \code{EMC2} package (\code{\link[EMC2:EMC2-package]{EMC2::EMC2()}}). In this case,
+\code{\link[EMC2:parameters]{EMC2::parameters()}} is used to extract subject-wise MCMC samples of the
+model parameters.}
 
 \item{covariate_data}{Optional data frame containing covariate data (if not
-in \code{mcmc_data}). Should contain one row per participant.}
+already in \code{mcmc_data}). Should contain one row per participant.}
 
-\item{draw_id}{String denoting the column with MCMC sample IDs in \code{mcmc_data}.}
+\item{draw_id}{String denoting the column with MCMC sample IDs in \code{mcmc_data}.
+If \code{mcmc_data} is an object of class \code{"emc"}, the provided \code{draw_id} is
+used to create an MCMC sample ID column, since the output of
+\code{\link[EMC2:parameters]{EMC2::parameters()}} does not include such a column by default.}
 
 \item{subject_id}{String denoting the column with subject IDs. If both \code{mcmc_data}
 and \code{covariate_data} are provided, this column name should be consistent
-across data frames.}
+across data frames.
+If \code{mcmc_data} is an object of class \code{"emc"}, \code{subject_id} must be
+equal to \code{"subjects"}.}
 
 \item{parameter}{String denoting the column with the estimated model
 parameter.}
