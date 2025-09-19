@@ -89,7 +89,7 @@ compare_plausible_cors(caution_striatum_cor, caution_presma_cor)
 #>   type         mean   lower upper p_dir
 #>   <fct>       <dbl>   <dbl> <dbl> <dbl>
 #> 1 sample     0.0764 -0.0649 0.203 0.864
-#> 2 population 0.0683 -0.528  0.607 0.596
+#> 2 population 0.0633 -0.511  0.610 0.590
 ```
 
 \## Development status
@@ -103,15 +103,12 @@ issues](https://github.com/frankhezemans/plausiblecor/issues).
 \## Statement of need
 
 As far as we know, this methodology has so far only been implemented in
-two open-source tools:
-
-- Dynamic Models of Choice (`DMC`) toolbox (Heathcote et al., 2019)  
-- `TreeBUGS` R package (Heck et al., 2018)
-
-Both of these implementations are tied to specific modelling frameworks
-and software: - `DMC` focuses on models of speeded decision-making. -
-`TreeBUGS` focuses on multinomial processing tree models and requires
-the JAGS MCMC library.
+two open-source tools: the Dynamic Models of Choice (`DMC`) toolbox
+(Heathcote et al., 2019), and the `TreeBUGS` R package (Heck et al.,
+2018). Both of these implementations are tied to specific modelling
+frameworks and software: `DMC` focuses on models of speeded
+decision-making, and `TreeBUGS` focuses on multinomial processing tree
+models and requires the JAGS MCMC library.
 
 In contrast, `plausiblecor` offers a more **modular and model-agnostic
 approach**, taking arbitrary data frames of MCMC samples and covariates,

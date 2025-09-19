@@ -73,20 +73,14 @@ caution_presma_cor <- run_plausible_cor(
 compare_plausible_cors(caution_striatum_cor, caution_presma_cor)
 ```
 
+
 ## Development status
 
 This package is under **active development**. Some functions are experimental and may change drastically or be removed without notice. If you use this package, please be prepared to update your code as the package develops. Feedback is very welcome via [GitHub issues](https://github.com/frankhezemans/plausiblecor/issues).
 
 ## Statement of need
 
-As far as we know, this methodology has so far only been implemented in two open-source tools:  
-
-- Dynamic Models of Choice (`DMC`) toolbox (Heathcote et al., 2019)  
-- `TreeBUGS` R package (Heck et al., 2018)  
-
-Both of these implementations are tied to specific modelling frameworks and software:
-- `DMC` focuses on models of speeded decision-making.
-- `TreeBUGS` focuses on multinomial processing tree models and requires the JAGS MCMC library.  
+As far as we know, this methodology has so far only been implemented in two open-source tools: the Dynamic Models of Choice (`DMC`) toolbox (Heathcote et al., 2019), and the `TreeBUGS` R package (Heck et al., 2018). Both of these implementations are tied to specific modelling frameworks and software: `DMC` focuses on models of speeded decision-making, and `TreeBUGS` focuses on multinomial processing tree models and requires the JAGS MCMC library.  
 
 In contrast, `plausiblecor` offers a more **modular and model-agnostic approach**, taking arbitrary data frames of MCMC samples and covariates, and providing a compact, self-contained workflow for post-hoc correlation analysis with flexible tools for summarisation and visualisation.
 
