@@ -42,8 +42,8 @@ tested the effect of a speed/accuracy manipulation on speeded
 decision-making.
 
 The following illustrates how to analyse the correlation between a
-latent parameter (estimated change in response caution) and observed
-covariates (fMRI BOLD signal change in different brain regions):
+latent parameter (estimated change in response caution) and an observed
+covariate (fMRI BOLD signal change in the caudate nucleus):
 
 ``` r
 library(plausiblecor)
@@ -70,29 +70,9 @@ summary(caution_striatum_cor)
 plot(caution_striatum_cor)
 ```
 
-<img src="man/figures/README-basic_example-1.png" width="100%" />
+<img src="man/figures/README-basic_example-1.png" width="50%" height="25%" />
 
-``` r
-
-# compare to the correlation between the same latent parameter and fMRI signal in a different brain region
-caution_presma_cor <- run_plausible_cor(
-  mcmc_data = Forstmann_LBA,
-  covariate_data = Forstmann_fMRI,
-  draw_id = ".draw",
-  subject_id = "subjects",
-  parameter = "caution_effect_speed",
-  covariate = "pre_sma"
-)
-
-compare_plausible_cors(caution_striatum_cor, caution_presma_cor)
-#> # A tibble: 2 × 5
-#>   type         mean   lower upper p_dir
-#>   <fct>       <dbl>   <dbl> <dbl> <dbl>
-#> 1 sample     0.0764 -0.0649 0.203 0.864
-#> 2 population 0.0633 -0.511  0.610 0.590
-```
-
-\## Development status
+## Development status
 
 This package is under **active development**. Some functions are
 experimental and may change drastically or be removed without notice. If
@@ -100,12 +80,13 @@ you use this package, please be prepared to update your code as the
 package develops. Feedback is very welcome via [GitHub
 issues](https://github.com/frankhezemans/plausiblecor/issues).
 
-\## Statement of need
+## Statement of need
 
 As far as we know, this methodology has so far only been implemented in
-two open-source tools: the Dynamic Models of Choice (`DMC`) toolbox
-(Heathcote et al., 2019), and the `TreeBUGS` R package (Heck et al.,
-2018). Both of these implementations are tied to specific modelling
+two open-source tools: the Dynamic Models of Choice
+([`DMC`](https://osf.io/pbwx8/)) toolbox (Heathcote et al., 2019), and
+the [`TreeBUGS`](https://github.com/danheck/TreeBUGS) R package (Heck et
+al., 2018). Both of these implementations are tied to specific modelling
 frameworks and software: `DMC` focuses on models of speeded
 decision-making, and `TreeBUGS` focuses on multinomial processing tree
 models and requires the JAGS MCMC library.
