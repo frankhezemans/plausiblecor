@@ -1,0 +1,153 @@
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+# plausiblecor
+
+<!-- badges: start -->
+
+[![Lifecycle:
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![License: GPL
+v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+<!-- badges: end -->
+
+**Bayesian Post-Hoc Correlation Analysis with Plausible Values**
+
+The `plausiblecor` package provides tools to test correlations between
+estimated latent parameters and observed covariates. It implements a
+*plausible values* approach (Ly et al., 2017) that properly accounts for
+uncertainty, enabling Bayesian inference on the correlation coefficient
+at both the sample and population level, without the need to re-fit the
+latent variable model. This is achieved through analytic solutions for
+the posterior distribution of the correlation coefficient (Ly et al.,
+2018; Kucharský et al., 2023).
+
+The package includes functions for calculating, summarising,
+visualising, and comparing plausible correlations.
+
+## Installation
+
+You can install the development version of `plausiblecor` from
+[GitHub](https://github.com/) with:
+
+``` r
+# install.packages("pak")
+pak::pak("frankhezemans/plausiblecor")
+```
+
+## Example
+
+`plausiblecor` ships with example data from Forstmann et al. (2008), who
+tested the effect of a speed/accuracy manipulation on speeded
+decision-making.
+
+The following illustrates how to analyse the correlation between a
+latent parameter (estimated change in response caution) and observed
+covariates (fMRI BOLD signal change in different brain regions):
+
+``` r
+library(plausiblecor)
+
+# correlation between latent parameter and fMRI signal in the striatum
+caution_striatum_cor <- run_plausible_cor(
+  mcmc_data = Forstmann_LBA,
+  covariate_data = Forstmann_fMRI,
+  draw_id = ".draw",
+  subject_id = "subjects",
+  parameter = "caution_effect_speed",
+  covariate = "striatum"
+)
+
+# summarise the result at both the sample and population level
+summary(caution_striatum_cor)
+#> # A tibble: 2 × 5
+#>   type         mean  lower  upper p_dir
+#>   <fct>       <dbl>  <dbl>  <dbl> <dbl>
+#> 1 sample     -0.326 -0.510 -0.136 0.999
+#> 2 population -0.277 -0.683  0.155 0.887
+
+# illustrate the posterior distribution at the population level
+plot(caution_striatum_cor)
+```
+
+<img src="man/figures/README-basic_example-1.png" width="100%" />
+
+``` r
+
+# compare to the correlation between the same latent parameter and fMRI signal in a different brain region
+caution_presma_cor <- run_plausible_cor(
+  mcmc_data = Forstmann_LBA,
+  covariate_data = Forstmann_fMRI,
+  draw_id = ".draw",
+  subject_id = "subjects",
+  parameter = "caution_effect_speed",
+  covariate = "pre_sma"
+)
+
+compare_plausible_cors(caution_striatum_cor, caution_presma_cor)
+#> # A tibble: 2 × 5
+#>   type         mean   lower upper p_dir
+#>   <fct>       <dbl>   <dbl> <dbl> <dbl>
+#> 1 sample     0.0764 -0.0649 0.203 0.864
+#> 2 population 0.0683 -0.528  0.607 0.596
+```
+
+\## Development status
+
+This package is under **active development**. Some functions are
+experimental and may change drastically or be removed without notice. If
+you use this package, please be prepared to update your code as the
+package develops. Feedback is very welcome via [GitHub
+issues](https://github.com/frankhezemans/plausiblecor/issues).
+
+\## Statement of need
+
+As far as we know, this methodology has so far only been implemented in
+two open-source tools:
+
+- Dynamic Models of Choice (`DMC`) toolbox (Heathcote et al., 2019)  
+- `TreeBUGS` R package (Heck et al., 2018)
+
+Both of these implementations are tied to specific modelling frameworks
+and software: - `DMC` focuses on models of speeded decision-making. -
+`TreeBUGS` focuses on multinomial processing tree models and requires
+the JAGS MCMC library.
+
+In contrast, `plausiblecor` offers a more **modular and model-agnostic
+approach**, taking arbitrary data frames of MCMC samples and covariates,
+and providing a compact, self-contained workflow for post-hoc
+correlation analysis with flexible tools for summarisation and
+visualisation.
+
+## References
+
+Forstmann, B. U., et al. (2008). Striatum and pre-SMA facilitate
+decision-making under time pressure. *Proceedings of the National
+Academy of Sciences*, *105*(45), 17538–17542. DOI:
+[10.1073/pnas.0805903105](https://doi.org/10.1073/pnas.0805903105)
+
+Heathcote, A., Lin, Y. S., Reynolds, A., Strickland, L., Gretton, M., &
+Matzke, D. (2019). Dynamic models of choice. *Behavior Research
+Methods*, *51*(2), 961–985. DOI:
+[10.3758/s13428-018-1067-y](https://doi.org/10.3758/s13428-018-1067-y)
+
+Heck, D. W., Arnold, N. R., & Arnold, D. (2018). TreeBUGS: An R package
+for hierarchical multinomial-processing-tree modeling. *Behavior
+Research Methods*, *50*, 264–284. DOI:
+[10.3758/s13428-017-0869-7](https://doi.org/10.3758/s13428-017-0869-7)
+
+Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman,
+M., & Matzke, D. (2017). A flexible and efficient hierarchical bayesian
+approach to the exploration of individual differences in
+cognitive‐model‐based neuroscience. In A. A. Moustafa (Ed.),
+*Computational Models of Brain and Behavior* (pp. 467–479). Wiley. DOI:
+[10.1002/9781119159193.ch34](https://doi.org/10.1002/9781119159193.ch34)
+
+Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Analytic posteriors
+for Pearson’s correlation coefficient. *Statistica Neerlandica*, *72*,
+4–13. DOI: [10.1111/stan.12111](https://doi.org/10.1111/stan.12111)
+
+Kucharský, S., Wagenmakers, E.-J., Van den Bergh, D., & Ly, A. (2023).
+Analytic posterior distributions and Bayes Factor for Pearson Partial
+Correlation. *PsyArXiv Preprints*. DOI:
+[10.31234/osf.io/6muwy](https://doi.org/10.31234/osf.io/6muwy)
