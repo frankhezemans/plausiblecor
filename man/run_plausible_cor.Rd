@@ -87,12 +87,11 @@ Implements a Bayesian approach for exploring individual differences in a
 model parameter that was estimated without reference to the observed
 covariate of interest. This function computes the Pearson correlation
 coefficient between subject-wise parameter values (estimated using MCMC
-sampling methods) and an observed covariate (e.g., questionnaire) for each
-MCMC sample, resulting in a distribution of "plausible values" for the
-correlation coefficient. It additionally provides the posterior density
-function for each correlation coefficient, to enable inference about the
-latent correlation in the population (as opposed to the given sample of
-subjects).
+sampling methods) and an observed covariate for each MCMC sample, resulting
+in a distribution of "plausible values" for the correlation coefficient. It
+additionally provides the posterior density function for each correlation
+coefficient, to enable inference about the latent correlation in the
+population (as opposed to the given sample of subjects).
 }
 \details{
 This function implements the approach described by Ly et al. (2017) for
@@ -123,17 +122,16 @@ range of \eqn{\left[-1, 1\right]}.
 }
 \references{
 Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,
-& Matzke, D. (2017). A flexible and efficient hierarchical bayesian approach
+& Matzke, D. (2017). A flexible and efficient hierarchical Bayesian approach
 to the exploration of individual differences in cognitive‐model‐based
-neuroscience. \emph{Computational models of brain and behavior}, 467-479. DOI:
-\href{https://doi.org/10.1002/9781119159193.ch34}{10.1002/9781119159193.ch34}
+neuroscience. In A. A. Moustafa (Ed.),  \emph{Computational Models of Brain and
+Behavior} (pp. 467–479). Wiley. \doi{10.1002/9781119159193.ch34}
 
 Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Analytic posteriors for
-Pearson's correlation coefficient. \emph{Statistica Neerlandica}, \emph{72}, 4–13. DOI:
-\href{https://doi.org/10.1111/stan.12111}{10.1111/stan.12111}
+Pearson's correlation coefficient. \emph{Statistica Neerlandica}, \emph{72}, 4–13.
+\doi{10.1111/stan.12111}
 
 Kucharský, S., Wagenmakers, E.-J., Van den Bergh, D., & Ly, A. (2023).
 Analytic posterior distributions and Bayes Factor for Pearson Partial
-Correlation. \emph{PsyArXiv Preprints}. DOI:
-\href{https://doi.org/10.31234/osf.io/6muwy}{10.31234/osf.io/6muwy}
+Correlation. \emph{PsyArXiv Preprints}. \doi{10.31234/osf.io/6muwy}
 }

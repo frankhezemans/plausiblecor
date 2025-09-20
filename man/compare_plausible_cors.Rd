@@ -18,17 +18,19 @@ compare_plausible_cors(
 the columns \code{.draw}, \code{r}, and \code{posterior_updf}.}
 
 \item{point_interval_args}{A named list specifying how the central tendency
-and credible interval(s) of the difference should be computed, or
-\code{NULL} to use defaults. Valid elements are: \code{point_method}
-(character string, either \code{"mean"} or \code{"median"} for the point summary),
-\code{interval_method} (character string, either \code{"hdci"} for highest
-density credible interval or \code{"qi"} for quantile interval), and
-\code{interval_width} (numeric vector with values between 0 and 1
-specifying the desired interval width(s)).
+and credible interval(s) should be computed, or \code{NULL} to use defaults.
+Valid elements are:
+\itemize{
+\item \code{point_method} character string, either \code{"mean"} (default) or \code{"median"}
+for the point summary.
+\item \code{interval_method} character string, either \code{"hdci"} (default) for highest
+density credible interval or \code{"qi"} for quantile interval.
+\item \code{interval_width} numeric vector with values between 0 and 1 specifying
+the desired interval width(s). Default is \code{0.95} for the 95\% credible
+interval.
 Any invalid arguments will be ignored with a warning. Partial
 specification is supported; unspecified elements will use defaults.
-Defaults to
-\code{list(point_method = "mean", interval_method = "hdci", interval_width = 0.95)}.}
+}}
 
 \item{rope_range}{Optional numeric vector of length 2 specifying the lower
 and upper bounds of the region of practical equivalence (ROPE), which
@@ -36,10 +38,10 @@ is used to compute the proportion of the distribution contained within
 the ROPE. Defaults to \code{NULL} in which case the ROPE is ignored.}
 
 \item{n_samples}{Integer indicating how many quantiles to draw per posterior
-distribution when \code{comparison_method = "population"}. Default is 1.}
+distribution when \code{comparison_method = "population"}. Default is \code{1}.}
 
 \item{rng_seed}{Optional numeric vector of length 2 to control the random
-seed for quantile sampling of \code{x} and \code{y}, respectively. If \code{NULL},
+seed for quantile sampling of \code{x} and \code{y}, respectively. If \code{NULL} (default),
 random seeds will not be set.}
 }
 \value{
@@ -49,9 +51,9 @@ between correlation coefficients, with the same format as \code{\link[=summarise
 \description{
 Compares the posterior distributions of plausible correlation values, as
 returned by two separate calls to \code{\link[=run_plausible_cor]{run_plausible_cor()}}. Uses two methods
-methods for defining the distribution of the difference: a \strong{sample-based}
+methods for defining the distribution of the difference: a \emph{sample-based}
 comparison, which subtracts the correlation values from matching MCMC
-samples, and a \strong{population-based} comparison, which draws quantiles from
+samples, and a \emph{population-based} comparison, which draws quantiles from
 each posterior distribution (accounting for population uncertainty) before
 computing the difference.
 }
@@ -70,12 +72,12 @@ Models of Choice toolbox (Heathcote et al., 2019).
 }
 \references{
 Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,
-& Matzke, D. (2017). A flexible and efficient hierarchical bayesian approach
+& Matzke, D. (2017). A flexible and efficient hierarchical Bayesian approach
 to the exploration of individual differences in cognitive‐model‐based
-neuroscience. \emph{Computational models of brain and behavior}, 467-479.
-https://doi.org/10.1002/9781119159193.ch34
+neuroscience. In A. A. Moustafa (Ed.),  \emph{Computational Models of Brain and
+Behavior} (pp. 467–479). Wiley. \doi{10.1002/9781119159193.ch34}
 
 Heathcote, A., Lin, Y.S., Reynolds, A., Strickland, L., Gretton, M., &
 Matzke, D. (2019). Dynamic models of choice. \emph{Behavior Research Methods},
-51, 961-985. https://doi.org/10.3758/s13428-018-1067-y
+\emph{51}, 961-985. \doi{10.3758/s13428-018-1067-y}
 }

@@ -16,15 +16,18 @@ summarise_plausible_cor(
 
 \item{point_interval_args}{A named list specifying how the central tendency
 and credible interval(s) should be computed, or \code{NULL} to use defaults.
-Valid elements are: \code{point_method} (character string, either \code{"mean"}
-or \code{"median"} for the point summary), \code{interval_method} (character
-string, either \code{"hdci"} for highest density credible interval or \code{"qi"}
-for quantile interval), and \code{interval_width} (numeric vector with
-values between 0 and 1 specifying the desired interval width(s)).
+Valid elements are:
+\itemize{
+\item \code{point_method} character string, either \code{"mean"} (default) or \code{"median"}
+for the point summary.
+\item \code{interval_method} character string, either \code{"hdci"} (default) for highest
+density credible interval or \code{"qi"} for quantile interval.
+\item \code{interval_width} numeric vector with values between 0 and 1 specifying
+the desired interval width(s). Default is \code{0.95} for the 95\% credible
+interval.
 Any invalid arguments will be ignored with a warning. Partial
 specification is supported; unspecified elements will use defaults.
-Defaults to
-\code{list(point_method = "mean", interval_method = "hdci", interval_width = 0.95)}.}
+}}
 
 \item{rope_range}{Optional numeric vector of length 2 specifying the lower
 and upper bounds of the region of practical equivalence (ROPE), which
@@ -35,7 +38,8 @@ coefficient practically equivalent to null.}
 
 \item{posterior_grid_spacing}{For summarising the population-level plausible
 correlation: The step size used to discretise each MCMC sample's
-posterior density function into a grid of posterior density values.}
+posterior density function into a grid of posterior density values.
+Default is \code{1e-3}.}
 }
 \value{
 A \link[tibble:tbl_df-class]{tibble::tbl_df} with one row per summary type
@@ -57,5 +61,5 @@ samples).
 \references{
 Gignac, G. E., & Szodorai, E. T. (2016). Effect size guidelines for
 individual differences researchers. \emph{Personality and individual differences},
-\emph{102}, 74-78. DOI: \href{https://doi.org/10.1016/j.paid.2016.06.069}{10.1016/j.paid.2016.06.069}
+\emph{102}, 74-78. \doi{10.1016/j.paid.2016.06.069}
 }

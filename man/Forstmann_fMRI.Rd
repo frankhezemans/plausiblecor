@@ -55,6 +55,6 @@ to both the neutral and accuracy conditions.
 Forstmann, B. U., Dutilh, G., Brown, S., Neumann, J., von Cramon, D. Y.,
 Ridderinkhof, K. R., & Wagenmakers, E.-J. (2008). Striatum and pre-SMA
 facilitate decision-making under time pressure. \emph{Proceedings of the National
-Academy of Sciences}, 105(45), 17538–17542. \doi{10.1073/pnas.0805903105}
+Academy of Sciences}, \emph{105}(45), 17538–17542. \doi{10.1073/pnas.0805903105}
 }
 \keyword{datasets}

@@ -71,7 +71,7 @@ better account for these data (see, e.g., the
 }
 \references{
 Brown, S. D., & Heathcote, A. (2008). The simplest complete model of choice
-response time: Linear ballistic accumulation. \emph{Cognitive Psychology}, 57(3),
+response time: Linear ballistic accumulation. \emph{Cognitive Psychology}, \emph{57}(3),
 153–178. \doi{10.1016/j.cogpsych.2007.12.002}
 
 Donkin, C., Brown, S. D., & Heathcote, A. (2009). The overconstraint of
@@ -81,9 +81,10 @@ response time models: Rethinking the scaling problem.
 Forstmann, B. U., Dutilh, G., Brown, S., Neumann, J., von Cramon, D. Y.,
 Ridderinkhof, K. R., & Wagenmakers, E.-J. (2008). Striatum and pre-SMA
 facilitate decision-making under time pressure. \emph{Proceedings of the National
-Academy of Sciences}, 105(45), 17538–17542. \doi{10.1073/pnas.0805903105}
+Academy of Sciences}, \emph{105}(45), 17538–17542. \doi{10.1073/pnas.0805903105}
 
-Stevenson, N., Donzallaz, M. C., & Heathcote, A. (2025). \emph{EMC2: Bayesian
-Hierarchical Analysis of Cognitive Models of Choice}. R package version 3.1.1.
+Stevenson, N., Donzallaz, M. C., Innes, R. J., Forstmann, B. U., Matzke, D.,
+& Heathcote, A. (2025). Bayesian hierarchical cognitive modelling with the
+EMC2 package. \emph{PsyArXiv preprints}. \doi{10.31234/osf.io/2e4dq_v4}
 }
 \keyword{datasets}

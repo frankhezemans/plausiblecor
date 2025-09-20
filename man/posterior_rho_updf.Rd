@@ -27,12 +27,12 @@ below). Default is \code{1}, resulting in a uniform prior.}
 \item{alternative}{Character string specifying the alternative hypothesis:
 \describe{
 \item{"two.sided"}{ (default) Prior is supported on \eqn{\left[-1, 1\right]}}
-\item{"greater"}{ Prior truncated to \eqn{\left[0, 1\right]} and renormalised}
-\item{"less"}{ Prior truncated to \eqn{\left[-1, 0\right]} and renormalised}
+\item{"greater"}{ Prior truncated to \eqn{\left[0, 1\right]} and re-normalised}
+\item{"less"}{ Prior truncated to \eqn{\left[-1, 0\right]} and re-normalised}
 }}
 
 \item{n_bins}{Integer. Number of grid points for the approximation, default
-is \code{1000}.}
+is \code{1e3}.}
 
 \item{max_iter}{Integer. Maximum number of iterations (attempts) to solve
 generalised hypergeometric functions that are necessary to compute
@@ -74,7 +74,7 @@ The prior is a stretched beta distribution with shape parameters
 \eqn{\alpha = \beta = \frac{1}{\kappa}}, scaled to the interval (-1, 1). This
 creates a symmetric distribution centered at zero and its domain stretched to
 cover the full range of the correlation coefficient. The prior can optionally
-also be truncated (and renormalised) to support a directional (strictly positive or negative)
+also be truncated (and renormalised) to support a directional (non-negative or non-positive)
 alternative hypothesis.
 
 This function was adapted from code previously released with the Dynamic
@@ -82,10 +82,10 @@ Models of Choice toolbox (Heathcote et al., 2019).
 }
 \references{
 Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Analytic posteriors for
-Pearson's correlation coefficient. \emph{Statistica Neerlandica}, 72, 4–13.
-https://doi.org/10.1111/stan.12111
+Pearson's correlation coefficient. \emph{Statistica Neerlandica}, \emph{72}, 4–13.
+\doi{10.1111/stan.12111}
 
 Heathcote, A., Lin, Y.S., Reynolds, A., Strickland, L., Gretton, M., &
 Matzke, D. (2019). Dynamic models of choice. \emph{Behavior Research Methods},
-51, 961-985. https://doi.org/10.3758/s13428-018-1067-y
+\emph{51}, 961-985. \doi{10.3758/s13428-018-1067-y}
 }
