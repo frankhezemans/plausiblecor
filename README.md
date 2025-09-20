@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# plausiblecor
+# plausiblecor: Bayesian Post-Hoc Correlation Analysis with Plausible Values
 
 <!-- badges: start -->
 
@@ -11,9 +11,7 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 <!-- badges: end -->
 
-**Bayesian Post-Hoc Correlation Analysis with Plausible Values**
-
-The `plausiblecor` package provides tools to test correlations between
+The R package `plausiblecor` provides tools to test correlations between
 estimated latent parameters and observed covariates. It implements a
 *plausible values* approach (Ly et al., 2017) that properly accounts for
 uncertainty, enabling Bayesian inference on the correlation coefficient
@@ -25,17 +23,32 @@ the posterior distribution of the correlation coefficient (Ly et al.,
 The package includes functions for calculating, summarising,
 visualising, and comparing plausible correlations.
 
+## Statement of need
+
+To the best of our knowledge, this methodology has so far only been
+implemented in two open-source tools: the Dynamic Models of Choice
+([`DMC`](https://osf.io/pbwx8/)) toolbox (Heathcote et al., 2019), and
+the [`TreeBUGS`](https://github.com/danheck/TreeBUGS) R package (Heck et
+al., 2018). Both of these implementations are tied to specific modelling
+frameworks and software: `DMC` focuses on models of speeded
+decision-making and response inhibition; `TreeBUGS` focuses on
+multinomial processing tree models and requires the JAGS MCMC library.
+
+In contrast, `plausiblecor` offers a more **modular and model-agnostic
+approach**, taking arbitrary data frames of MCMC samples and covariates,
+and providing a compact, self-contained workflow for post-hoc
+correlation analysis with flexible tools for summarisation and
+visualisation.
+
 ## Installation
 
-You can install the development version of `plausiblecor` from
-[GitHub](https://github.com/) with:
+You can install the development version of `plausiblecor` as follows:
 
 ``` r
-# install.packages("pak")
-pak::pak("frankhezemans/plausiblecor")
+remotes::install_github("frankhezemans/plausiblecor")
 ```
 
-## Example
+## Getting started
 
 `plausiblecor` ships with example data from Forstmann et al. (2008), who
 tested the effect of a speed/accuracy manipulation on speeded
@@ -70,7 +83,7 @@ summary(caution_striatum_cor)
 plot(caution_striatum_cor)
 ```
 
-<img src="man/figures/README-basic_example-1.png" width="50%" height="25%" />
+<img src="man/figures/README-basic_example-1.png" width="50%" height="20%" />
 
 ## Development status
 
@@ -79,23 +92,6 @@ experimental and may change drastically or be removed without notice. If
 you use this package, please be prepared to update your code as the
 package develops. Feedback is very welcome via [GitHub
 issues](https://github.com/frankhezemans/plausiblecor/issues).
-
-## Statement of need
-
-As far as we know, this methodology has so far only been implemented in
-two open-source tools: the Dynamic Models of Choice
-([`DMC`](https://osf.io/pbwx8/)) toolbox (Heathcote et al., 2019), and
-the [`TreeBUGS`](https://github.com/danheck/TreeBUGS) R package (Heck et
-al., 2018). Both of these implementations are tied to specific modelling
-frameworks and software: `DMC` focuses on models of speeded
-decision-making, and `TreeBUGS` focuses on multinomial processing tree
-models and requires the JAGS MCMC library.
-
-In contrast, `plausiblecor` offers a more **modular and model-agnostic
-approach**, taking arbitrary data frames of MCMC samples and covariates,
-and providing a compact, self-contained workflow for post-hoc
-correlation analysis with flexible tools for summarisation and
-visualisation.
 
 ## References
 
@@ -115,7 +111,7 @@ Research Methods*, *50*, 264–284. DOI:
 [10.3758/s13428-017-0869-7](https://doi.org/10.3758/s13428-017-0869-7)
 
 Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman,
-M., & Matzke, D. (2017). A flexible and efficient hierarchical bayesian
+M., & Matzke, D. (2017). A flexible and efficient hierarchical Bayesian
 approach to the exploration of individual differences in
 cognitive‐model‐based neuroscience. In A. A. Moustafa (Ed.),
 *Computational Models of Brain and Behavior* (pp. 467–479). Wiley. DOI:
