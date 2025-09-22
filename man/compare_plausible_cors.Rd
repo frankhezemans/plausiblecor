@@ -10,7 +10,8 @@ compare_plausible_cors(
   point_interval_args = NULL,
   rope_range = NULL,
   n_samples = 1,
-  rng_seed = NULL
+  rng_seed = NULL,
+  posterior_grid_spacing = 0.001
 )
 }
 \arguments{
@@ -41,8 +42,13 @@ the ROPE. Defaults to \code{NULL} in which case the ROPE is ignored.}
 distribution when \code{comparison_method = "population"}. Default is \code{1}.}
 
 \item{rng_seed}{Optional numeric vector of length 2 to control the random
-seed for quantile sampling of \code{x} and \code{y}, respectively. If \code{NULL} (default),
-random seeds will not be set.}
+seed for quantile sampling of \code{x} and \code{y}, respectively. If \code{NULL}
+(default), random seeds will not be set.}
+
+\item{posterior_grid_spacing}{For comparing the population-level plausible
+correlations: The step size used to discretise each MCMC sample's
+posterior density function into a grid of posterior density values,
+before quantiles are drawn. Default is \code{1e-3}.}
 }
 \value{
 A \code{\link[tibble:tibble]{tibble::tibble()}} containing summary statistics of the difference

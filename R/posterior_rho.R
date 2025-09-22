@@ -16,11 +16,11 @@
 #' @param alternative Character string specifying the alternative hypothesis:
 #'   \describe{
 #'     \item{"two.sided"}{ (default) Prior is supported on \eqn{\left[-1, 1\right]}}
-#'     \item{"greater"}{ Prior truncated to \eqn{\left[0, 1\right]} and renormalised}
-#'     \item{"less"}{ Prior truncated to \eqn{\left[-1, 0\right]} and renormalised}
+#'     \item{"greater"}{ Prior truncated to \eqn{\left[0, 1\right]} and re-normalised}
+#'     \item{"less"}{ Prior truncated to \eqn{\left[-1, 0\right]} and re-normalised}
 #'   }
 #' @param n_bins Integer. Number of grid points for the approximation, default
-#'        is `1000`.
+#'        is `1e3`.
 #' @param max_iter Integer. Maximum number of iterations (attempts) to solve
 #'        generalised hypergeometric functions that are necessary to compute
 #'        the posterior density. Default is `1e7`. See details.
@@ -54,7 +54,7 @@
 #' \eqn{\alpha = \beta = \frac{1}{\kappa}}, scaled to the interval (-1, 1). This
 #' creates a symmetric distribution centered at zero and its domain stretched to
 #' cover the full range of the correlation coefficient. The prior can optionally
-#' also be truncated (and renormalised) to support a directional (strictly positive or negative)
+#' also be truncated (and renormalised) to support a directional (non-negative or non-positive)
 #' alternative hypothesis.
 #'
 #' This function was adapted from code previously released with the Dynamic
@@ -62,12 +62,12 @@
 #'
 #' @references
 #' Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Analytic posteriors for
-#' Pearson's correlation coefficient. *Statistica Neerlandica*, 72, 4–13.
-#' https://doi.org/10.1111/stan.12111
+#' Pearson's correlation coefficient. *Statistica Neerlandica*, *72*, 4–13.
+#' \doi{10.1111/stan.12111}
 #'
 #' Heathcote, A., Lin, Y.S., Reynolds, A., Strickland, L., Gretton, M., &
 #' Matzke, D. (2019). Dynamic models of choice. *Behavior Research Methods*,
-#' 51, 961-985. https://doi.org/10.3758/s13428-018-1067-y
+#' *51*, 961-985. \doi{10.3758/s13428-018-1067-y}
 #'
 #' @export
 posterior_rho_updf <- function(

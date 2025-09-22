@@ -13,6 +13,8 @@ run_plausible_cor(
   covariate,
   confounders = NULL,
   alternative = c("two.sided", "greater", "less"),
+  n_draws = NULL,
+  rng_seed = NULL,
   posterior_args = NULL
 )
 }
@@ -57,6 +59,13 @@ computed for each Pearson correlation coefficient:
 \item{"greater"}{ Prior truncated to \eqn{\left[0, 1\right]} and renormalised}
 \item{"less"}{ Prior truncated to \eqn{\left[-1, 0\right]} and renormalised}
 }}
+
+\item{n_draws}{Optional integer denoting the number of MCMC samples to retain
+from \code{mcmc_data}. If \code{NULL} (default), all samples are retained.}
+
+\item{rng_seed}{Optional integer denoting the random seed for sampling
+\code{n_draws} rows from \code{mcmc_data} (if applicable). If \code{NULL} (default),
+the random seed will not be set.}
 
 \item{posterior_args}{Named list of arguments passed to
 \code{\link[=posterior_rho_updf]{posterior_rho_updf()}}, which influence how the unnormalised posterior

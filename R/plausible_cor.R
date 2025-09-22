@@ -5,12 +5,11 @@
 #' model parameter that was estimated without reference to the observed
 #' covariate of interest. This function computes the Pearson correlation
 #' coefficient between subject-wise parameter values (estimated using MCMC
-#' sampling methods) and an observed covariate (e.g., questionnaire) for each
-#' MCMC sample, resulting in a distribution of "plausible values" for the
-#' correlation coefficient. It additionally provides the posterior density
-#' function for each correlation coefficient, to enable inference about the
-#' latent correlation in the population (as opposed to the given sample of
-#' subjects).
+#' sampling methods) and an observed covariate for each MCMC sample, resulting
+#' in a distribution of "plausible values" for the correlation coefficient. It
+#' additionally provides the posterior density function for each correlation
+#' coefficient, to enable inference about the latent correlation in the
+#' population (as opposed to the given sample of subjects).
 #'
 #' @param mcmc_data Data frame of MCMC samples in long format, where each row
 #'        represents a unique combination of MCMC draw, subject, and
@@ -45,6 +44,11 @@
 #'     \item{"greater"}{ Prior truncated to \eqn{\left[0, 1\right]} and renormalised}
 #'     \item{"less"}{ Prior truncated to \eqn{\left[-1, 0\right]} and renormalised}
 #'   }
+#' @param n_draws Optional integer denoting the number of MCMC samples to retain
+#'        from `mcmc_data`. If `NULL` (default), all samples are retained.
+#' @param rng_seed Optional integer denoting the random seed for sampling
+#'        `n_draws` rows from `mcmc_data` (if applicable). If `NULL` (default),
+#'        the random seed will not be set.
 #' @param posterior_args Named list of arguments passed to
 #'        [posterior_rho_updf()], which influence how the unnormalised posterior
 #'        density function is computed for each Pearson correlation coefficient.
@@ -95,19 +99,18 @@
 #'
 #' @references
 #' Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,
-#' & Matzke, D. (2017). A flexible and efficient hierarchical bayesian approach
+#' & Matzke, D. (2017). A flexible and efficient hierarchical Bayesian approach
 #' to the exploration of individual differences in cognitive‐model‐based
-#' neuroscience. *Computational models of brain and behavior*, 467-479. DOI:
-#' [10.1002/9781119159193.ch34](https://doi.org/10.1002/9781119159193.ch34)
+#' neuroscience. In A. A. Moustafa (Ed.),  *Computational Models of Brain and
+#' Behavior* (pp. 467–479). Wiley. \doi{10.1002/9781119159193.ch34}
 #'
 #' Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Analytic posteriors for
-#' Pearson's correlation coefficient. *Statistica Neerlandica*, *72*, 4–13. DOI:
-#' [10.1111/stan.12111](https://doi.org/10.1111/stan.12111)
+#' Pearson's correlation coefficient. *Statistica Neerlandica*, *72*, 4–13.
+#' \doi{10.1111/stan.12111}
 #'
 #' Kucharský, S., Wagenmakers, E.-J., Van den Bergh, D., & Ly, A. (2023).
 #' Analytic posterior distributions and Bayes Factor for Pearson Partial
-#' Correlation. *PsyArXiv Preprints*. DOI:
-#' [10.31234/osf.io/6muwy](https://doi.org/10.31234/osf.io/6muwy)
+#' Correlation. *PsyArXiv Preprints*. \doi{10.31234/osf.io/6muwy}
 #'
 #' @export
 run_plausible_cor <- function(
@@ -119,6 +122,8 @@ run_plausible_cor <- function(
     covariate,
     confounders = NULL,
     alternative = c("two.sided", "greater", "less"),
+    n_draws = NULL,
+    rng_seed = NULL,
     posterior_args = NULL
 ) {
 
@@ -153,7 +158,9 @@ run_plausible_cor <- function(
   data <- prep_plausible_cor_data(
     mcmc_data = mcmc_data,
     covariate_data = covariate_data,
-    column_names = column_names
+    column_names = column_names,
+    n_draws = n_draws,
+    rng_seed = rng_seed
   )
 
   result <- run_plausible_cor_engine(
@@ -275,15 +282,16 @@ compute_cor <- function(
 #' @param .data A data frame output from [run_plausible_cor()].
 #' @param point_interval_args A named list specifying how the central tendency
 #'        and credible interval(s) should be computed, or `NULL` to use defaults.
-#'        Valid elements are: `point_method` (character string, either `"mean"`
-#'        or `"median"` for the point summary), `interval_method` (character
-#'        string, either `"hdci"` for highest density credible interval or `"qi"`
-#'        for quantile interval), and `interval_width` (numeric vector with
-#'        values between 0 and 1 specifying the desired interval width(s)).
+#'        Valid elements are:
+#'  * `point_method` character string, either `"mean"` (default) or `"median"`
+#'        for the point summary.
+#'  * `interval_method` character string, either `"hdci"` (default) for highest
+#'        density credible interval or `"qi"` for quantile interval.
+#'  * `interval_width` numeric vector with values between 0 and 1 specifying
+#'        the desired interval width(s). Default is `0.95` for the 95% credible
+#'        interval.
 #'        Any invalid arguments will be ignored with a warning. Partial
 #'        specification is supported; unspecified elements will use defaults.
-#'        Defaults to
-#'        `list(point_method = "mean", interval_method = "hdci", interval_width = 0.95)`.
 #' @param rope_range Optional numeric vector of length 2 specifying the lower
 #'        and upper bounds of the region of practical equivalence (ROPE), which
 #'        is used to compute the proportion of the distribution contained within
@@ -293,6 +301,7 @@ compute_cor <- function(
 #' @param posterior_grid_spacing For summarising the population-level plausible
 #'        correlation: The step size used to discretise each MCMC sample's
 #'        posterior density function into a grid of posterior density values.
+#'        Default is `1e-3`.
 #'
 #' @return A [tibble::tbl_df-class] with one row per summary type
 #'         ("sample" and "posterior") and credible interval width, containing:
@@ -307,7 +316,7 @@ compute_cor <- function(
 #' @references
 #' Gignac, G. E., & Szodorai, E. T. (2016). Effect size guidelines for
 #' individual differences researchers. *Personality and individual differences*,
-#' *102*, 74-78. DOI: [10.1016/j.paid.2016.06.069](https://doi.org/10.1016/j.paid.2016.06.069)
+#' *102*, 74-78. \doi{10.1016/j.paid.2016.06.069}
 #'
 #' @export
 summarise_plausible_cor <- function(
@@ -340,7 +349,7 @@ summarise_plausible_cor <- function(
 
   mean_posterior_rho <- .data %>%
     get_posterior_rho_densities(grid_spacing = posterior_grid_spacing) %>%
-    get_mean_posterior_rho()
+    get_mean_posterior_rho(dx = posterior_grid_spacing)
 
   rho_grid <- mean_posterior_rho[["x"]]
   mean_density <- mean_posterior_rho[["mean_density"]]
@@ -348,14 +357,16 @@ summarise_plausible_cor <- function(
   population_point <- get_point_estimate(
     val = rho_grid,
     dens = mean_density,
-    method = point_interval_args[["point_method"]]
+    method = point_interval_args[["point_method"]],
+    dx = posterior_grid_spacing
   )
 
   population_interval <- get_interval(
     val = rho_grid,
     dens = mean_density,
     width = point_interval_args[["interval_width"]],
-    method = point_interval_args[["interval_method"]]
+    method = point_interval_args[["interval_method"]],
+    dx = posterior_grid_spacing
   )
 
   population_summary <- population_interval %>%
@@ -399,35 +410,39 @@ summarise_plausible_cor <- function(
 #' @description
 #' Compares the posterior distributions of plausible correlation values, as
 #' returned by two separate calls to [run_plausible_cor()]. Uses two methods
-#' methods for defining the distribution of the difference: a **sample-based**
+#' methods for defining the distribution of the difference: a *sample-based*
 #' comparison, which subtracts the correlation values from matching MCMC
-#' samples, and a **population-based** comparison, which draws quantiles from
+#' samples, and a *population-based* comparison, which draws quantiles from
 #' each posterior distribution (accounting for population uncertainty) before
 #' computing the difference.
 #'
 #' @param x,y Data frames returned by [run_plausible_cor()], each containing
 #'   the columns `.draw`, `r`, and `posterior_updf`.
 #' @param point_interval_args A named list specifying how the central tendency
-#'        and credible interval(s) of the difference should be computed, or
-#'        `NULL` to use defaults. Valid elements are: `point_method`
-#'        (character string, either `"mean"` or `"median"` for the point summary),
-#'        `interval_method` (character string, either `"hdci"` for highest
-#'        density credible interval or `"qi"` for quantile interval), and
-#'        `interval_width` (numeric vector with values between 0 and 1
-#'        specifying the desired interval width(s)).
+#'        and credible interval(s) should be computed, or `NULL` to use defaults.
+#'        Valid elements are:
+#'  * `point_method` character string, either `"mean"` (default) or `"median"`
+#'        for the point summary.
+#'  * `interval_method` character string, either `"hdci"` (default) for highest
+#'        density credible interval or `"qi"` for quantile interval.
+#'  * `interval_width` numeric vector with values between 0 and 1 specifying
+#'        the desired interval width(s). Default is `0.95` for the 95% credible
+#'        interval.
 #'        Any invalid arguments will be ignored with a warning. Partial
 #'        specification is supported; unspecified elements will use defaults.
-#'        Defaults to
-#'        `list(point_method = "mean", interval_method = "hdci", interval_width = 0.95)`.
 #' @param rope_range Optional numeric vector of length 2 specifying the lower
 #'        and upper bounds of the region of practical equivalence (ROPE), which
 #'        is used to compute the proportion of the distribution contained within
 #'        the ROPE. Defaults to `NULL` in which case the ROPE is ignored.
 #' @param n_samples Integer indicating how many quantiles to draw per posterior
-#'   distribution when `comparison_method = "population"`. Default is 1.
+#'        distribution when `comparison_method = "population"`. Default is `1`.
 #' @param rng_seed Optional numeric vector of length 2 to control the random
-#'   seed for quantile sampling of `x` and `y`, respectively. If `NULL`,
-#'   random seeds will not be set.
+#'        seed for quantile sampling of `x` and `y`, respectively. If `NULL`
+#'        (default), random seeds will not be set.
+#' @param posterior_grid_spacing For comparing the population-level plausible
+#'        correlations: The step size used to discretise each MCMC sample's
+#'        posterior density function into a grid of posterior density values,
+#'        before quantiles are drawn. Default is `1e-3`.
 #'
 #' @return A [tibble::tibble()] containing summary statistics of the difference
 #'  between correlation coefficients, with the same format as [summarise_plausible_cor()].
@@ -447,14 +462,14 @@ summarise_plausible_cor <- function(
 #'
 #' @references
 #' Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,
-#' & Matzke, D. (2017). A flexible and efficient hierarchical bayesian approach
+#' & Matzke, D. (2017). A flexible and efficient hierarchical Bayesian approach
 #' to the exploration of individual differences in cognitive‐model‐based
-#' neuroscience. *Computational models of brain and behavior*, 467-479.
-#' https://doi.org/10.1002/9781119159193.ch34
+#' neuroscience. In A. A. Moustafa (Ed.),  *Computational Models of Brain and
+#' Behavior* (pp. 467–479). Wiley. \doi{10.1002/9781119159193.ch34}
 #'
 #' Heathcote, A., Lin, Y.S., Reynolds, A., Strickland, L., Gretton, M., &
 #' Matzke, D. (2019). Dynamic models of choice. *Behavior Research Methods*,
-#' 51, 961-985. https://doi.org/10.3758/s13428-018-1067-y
+#' *51*, 961-985. \doi{10.3758/s13428-018-1067-y}
 #'
 #' @export
 compare_plausible_cors <- function(
@@ -463,7 +478,8 @@ compare_plausible_cors <- function(
     point_interval_args = NULL,
     rope_range = NULL,
     n_samples = 1,
-    rng_seed = NULL
+    rng_seed = NULL,
+    posterior_grid_spacing = 1e-3
 ) {
 
   validate_column_inputs(
@@ -521,7 +537,8 @@ compare_plausible_cors <- function(
       get_sampled_quantiles(
         .data = data,
         n_samples = n,
-        starter_seed = seed
+        starter_seed = seed,
+        grid_spacing = posterior_grid_spacing
       )
     }
   ) %>%
@@ -667,16 +684,7 @@ get_mean_posterior_rho <- function(.data, dx = NULL) {
       .groups = "drop"
     )
 
-  if (is.null(dx)) {
-    dxs <- diff(sort(unique(result[["x"]])))
-    dxs_rounded <- round(dxs, digits = 10)
-    if (length(unique(dxs_rounded)) > 1) {
-      rlang::warn(
-        message = "Grid appears irregular; using first diff() as dx."
-      )
-    }
-    dx <- dxs_rounded[1]
-  }
+  dx <- dx %||% get_dx(result[["x"]])
 
   result <- result %>%
     dplyr::mutate(
@@ -702,6 +710,8 @@ get_mean_posterior_rho <- function(.data, dx = NULL) {
 #'   MCMC draw. Defaults to `1`.
 #' @param starter_seed Optional scalar numeric used to seed the random number
 #'   generator for reproducibility. If `NA` (default), no seed is set.
+#' @param grid_spacing Step size used to discretise the posterior
+#'   density function. Default is `1e-3`.
 #'
 #' @return A [tibble::tibble] with one row per sampled quantile and columns:
 #'   \item{.draw}{The MCMC draw ID}
@@ -720,7 +730,8 @@ get_mean_posterior_rho <- function(.data, dx = NULL) {
 get_sampled_quantiles <- function(
     .data,
     n_samples = 1,
-    starter_seed = NA
+    starter_seed = NA,
+    grid_spacing = 1e-3
 ) {
 
   validate_column_inputs(
@@ -729,7 +740,7 @@ get_sampled_quantiles <- function(
     data_name = ".data"
   )
 
-  draw_quantiles <- function(density_grid, n_quantiles, seed = NA) {
+  draw_quantiles <- function(density_grid, n_quantiles, grid_dx, seed = NA) {
     if (!is.na(seed)) {
       probs <- withr::with_seed(
         seed = seed,
@@ -742,7 +753,8 @@ get_sampled_quantiles <- function(
       val = density_grid[["x"]],
       dens = density_grid[["density"]],
       method = "quantile",
-      prob = probs
+      prob = probs,
+      dx = grid_dx
     )
     result <- tibble::tibble(quantile = quantiles)
     return(result)
@@ -761,7 +773,7 @@ get_sampled_quantiles <- function(
   }
 
   result <- .data %>%
-    get_posterior_rho_densities() %>%
+    get_posterior_rho_densities(grid_spacing = grid_spacing) %>%
     tidyr::nest(
       density_grid = tidyr::all_of(c("x", "density")),
       .by = tidyr::all_of(c(".draw", "r"))
@@ -775,6 +787,7 @@ get_sampled_quantiles <- function(
         draw_quantiles(
           density_grid = .data[["density_grid"]],
           n_quantiles = n_samples,
+          grid_dx = grid_spacing,
           seed = .data[["seed"]]
         )
       ),
@@ -893,7 +906,9 @@ summarise_samples <- function(
 prep_plausible_cor_data <- function(
     mcmc_data,
     covariate_data,
-    column_names
+    column_names,
+    n_draws,
+    rng_seed
 ) {
 
   validate_column_inputs(
@@ -974,7 +989,11 @@ prep_plausible_cor_data <- function(
   }
 
   data <- data %>%
-    dplyr::arrange(.data[[".draw"]])
+    dplyr::arrange(.data[[".draw"]]) %>%
+    draw_rows(
+      n_draws = n_draws,
+      rng_seed = rng_seed
+    )
 
   return(data)
 
@@ -1019,4 +1038,41 @@ prep_emc_data <- function(
 
   return(mcmc_data)
 
+}
+
+#' @noRd
+draw_rows <- function(.data, n_draws, rng_seed) {
+  if (is.null(n_draws) || !is.finite(n_draws)) {
+    return(.data)
+  }
+  n_draws <- checkmate::assert_count(
+    x = n_draws,
+    coerce = TRUE
+  )
+  if (n_draws >= nrow(.data)) {
+    return(.data)
+  }
+  if (!is.null(rng_seed)) {
+    rng_seed <- checkmate::assert_integerish(
+      x = rng_seed,
+      any.missing = FALSE,
+      len = 1,
+      coerce = TRUE
+    )
+    result <- withr::with_seed(
+      seed = rng_seed,
+      code = .data %>%
+        dplyr::slice_sample(
+          n = n_draws,
+          replace = FALSE
+        )
+    )
+  } else {
+    result <- .data %>%
+      dplyr::slice_sample(
+        n = n_draws,
+        replace = FALSE
+      )
+  }
+  return(result)
 }

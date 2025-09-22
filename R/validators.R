@@ -74,14 +74,17 @@ validate_column_inputs <- function(
     if (is.null(data_name)) {
       data_name <- rlang::as_label(rlang::enquo(data_frame))
     }
+    col_names_vec <- unname(unlist(col_names))
     checkmate::assert_data_frame(
       x = data_frame,
+      min.rows = 1,
+      min.cols = length(col_names_vec),
       .var.name = data_name
     )
     checkmate::assert_names(
       x = names(data_frame),
       type = "strict",
-      must.include = unname(unlist(col_names)),
+      must.include = col_names_vec,
       .var.name = data_name
     )
   }

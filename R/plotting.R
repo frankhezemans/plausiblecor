@@ -437,30 +437,6 @@ plot_sample_cor <- function(
 }
 
 #' @noRd
-draw_rows <- function(.data, n_draws, rng_seed) {
-  if (n_draws >= nrow(.data)) {
-    return(.data)
-  }
-  if (!is.null(rng_seed) && is.finite(rng_seed)) {
-    result <- withr::with_seed(
-      seed = rng_seed,
-      code = .data %>%
-        dplyr::slice_sample(
-          n = n_draws,
-          replace = FALSE
-        )
-    )
-  } else {
-    result <- .data %>%
-      dplyr::slice_sample(
-        n = n_draws,
-        replace = FALSE
-      )
-  }
-  return(result)
-}
-
-#' @noRd
 add_theme_elements <- function(plot_text_scaling) {
   result <- ggplot2::theme_minimal() +
     ggplot2::theme(

@@ -5,7 +5,7 @@
 #' corresponding density over a discretised grid.
 #'
 #' @param val Numeric vector representing the grid of values over which the
-#'        density is defined. Assumed to be equally spaced.
+#'        density is defined.
 #' @param dens Numeric vector of the same length as `val`, representing the
 #'        density at each grid point.
 #' @param method Character string specifying which point estimate to compute.
@@ -13,6 +13,8 @@
 #' @param prob Numeric value between 0 and 1, only required when
 #'        `method = "quantile"`. Specifies the cumulative probability at which
 #'        to evaluate the quantile.
+#' @param dx Grid spacing (step size). If `NULL` (default), it is estimated
+#'        from the unique values of `val` (grid points) using [diff()].
 #'
 #' @return A numeric value corresponding to the requested point estimate.
 #'
@@ -21,7 +23,8 @@ get_point_estimate <- function(
     val,
     dens,
     method = c("mean", "median", "quantile"),
-    prob = NULL
+    prob = NULL,
+    dx = NULL
 ) {
 
   if (length(val) != length(dens)) {
@@ -30,7 +33,7 @@ get_point_estimate <- function(
     )
   }
   method <- rlang::arg_match(arg = method)
-  dx <- diff(val)[1]
+  dx <- dx %||% get_dx(val)
 
   if (method == "mean") {
     result <- sum(val * dens) * dx
@@ -62,7 +65,7 @@ get_point_estimate <- function(
 #' vector of values and a corresponding density over a discretised grid.
 #'
 #' @param val Numeric vector representing the grid of values over which the
-#'        density is defined. Assumed to be equally spaced.
+#'        density is defined.
 #' @param dens Numeric vector of the same length as `val`, representing the
 #'        density at each grid point.
 #' @param width Numeric vector of desired interval widths
@@ -70,6 +73,8 @@ get_point_estimate <- function(
 #' @param method Character string specifying which interval type to compute.
 #'        One of `"qi"` (quantile interval) or `"hdci"`
 #'        (highest-density continuous interval, default).
+#' @param dx Grid spacing (step size). If `NULL` (default), it is estimated
+#'        from the unique values of `val` (grid points) using [diff()].
 #'
 #' @return A data frame with columns `"lower"`, `"upper"`, and `"width"` for
 #'         each requested interval.
@@ -79,7 +84,8 @@ get_interval <- function(
     val,
     dens,
     width,
-    method = c("hdci", "qi")
+    method = c("hdci", "qi"),
+    dx = NULL
 ) {
 
   if (length(val) != length(dens)) {
@@ -88,7 +94,8 @@ get_interval <- function(
     )
   }
   method <- rlang::arg_match(arg = method)
-  dx <- diff(val)[1]
+  dx <- dx %||% get_dx(val)
+
   cdf <- cumsum(dens) * dx
 
   compute_interval <- function(w) {
@@ -120,4 +127,16 @@ get_interval <- function(
 
   return(result)
 
+}
+
+#' @noRd
+get_dx <- function(x, tol = 1e-12) {
+  dxs <- diff(sort(unique(x)))
+  if (max(dxs) - min(dxs) > tol) {
+    rlang::warn(
+      message = "Grid appears uneven; using first diff() as dx."
+    )
+  }
+  dx <- dxs[1]
+  return(dx)
 }
