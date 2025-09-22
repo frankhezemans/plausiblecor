@@ -50,7 +50,7 @@
 #'        `n_draws` rows from `mcmc_data` (if applicable). If `NULL` (default),
 #'        the random seed will not be set.
 #' @param posterior_args Named list of arguments passed to
-#'        [posterior_rho_updf()], which influence how the unnormalised posterior
+#'        [posterior_cor_updf()], which influence how the unnormalised posterior
 #'        density function is computed for each Pearson correlation coefficient.
 #'        The following arguments can be included:
 #'  * `kappa` Numeric value controlling the "concentration" of the
@@ -215,7 +215,7 @@ run_plausible_cor_engine <- function(
         ),
         .f = function(r_val, n_val, k_val) {
           rlang::exec(
-            .fn = posterior_rho_updf,
+            .fn = posterior_cor_updf,
             r = r_val,
             n = n_val - k_val,
             !!!posterior_args
@@ -347,22 +347,22 @@ summarise_plausible_cor <- function(
     ) %>%
     dplyr::relocate(dplyr::all_of("type"))
 
-  mean_posterior_rho <- .data %>%
-    get_posterior_rho_densities(grid_spacing = posterior_grid_spacing) %>%
-    get_mean_posterior_rho(dx = posterior_grid_spacing)
+  mean_posterior_cor <- .data %>%
+    get_posterior_cor_densities(grid_spacing = posterior_grid_spacing) %>%
+    get_mean_posterior_cor(dx = posterior_grid_spacing)
 
-  rho_grid <- mean_posterior_rho[["x"]]
-  mean_density <- mean_posterior_rho[["mean_density"]]
+  cor_grid <- mean_posterior_cor[["x"]]
+  mean_density <- mean_posterior_cor[["mean_density"]]
 
   population_point <- get_point_estimate(
-    val = rho_grid,
+    val = cor_grid,
     dens = mean_density,
     method = point_interval_args[["point_method"]],
     dx = posterior_grid_spacing
   )
 
   population_interval <- get_interval(
-    val = rho_grid,
+    val = cor_grid,
     dens = mean_density,
     width = point_interval_args[["interval_width"]],
     method = point_interval_args[["interval_method"]],
@@ -374,8 +374,8 @@ summarise_plausible_cor <- function(
       type = "population",
       !!point_interval_args[["point_method"]] := population_point,
       p_dir = max(
-        sum(mean_density[rho_grid > 0]) * posterior_grid_spacing,
-        sum(mean_density[rho_grid < 0]) * posterior_grid_spacing
+        sum(mean_density[cor_grid > 0]) * posterior_grid_spacing,
+        sum(mean_density[cor_grid < 0]) * posterior_grid_spacing
       )
     ) %>%
     dplyr::relocate(dplyr::all_of("type"))
@@ -384,7 +384,7 @@ summarise_plausible_cor <- function(
     population_summary <- population_summary %>%
       dplyr::mutate(
         p_rope = sum(
-          mean_density[rho_grid >= rope_range[1] & rho_grid <= rope_range[2]]
+          mean_density[cor_grid >= rope_range[1] & cor_grid <= rope_range[2]]
         ) * posterior_grid_spacing
       )
   }
@@ -599,7 +599,7 @@ compare_plausible_cors <- function(
 #'         given posterior density function.
 #'
 #' @export
-get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
+get_posterior_cor_densities <- function(.data, grid_spacing = 1e-3) {
 
   validate_column_inputs(
     col_names = c(".draw", "r", "posterior_updf"),
@@ -609,14 +609,14 @@ get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
 
   max_abs_r <- 0.999
   n_steps <- floor(max_abs_r / grid_spacing)
-  rho_grid <- seq(
+  cor_grid <- seq(
     from = -n_steps * grid_spacing,
     to = n_steps * grid_spacing,
     by = grid_spacing
   )
 
   single_density_grid <- function(
-    draw_id, r_val, updf, grid = rho_grid, dx = grid_spacing
+    draw_id, r_val, updf, grid = cor_grid, dx = grid_spacing
   ) {
     if (!checkmate::test_function(updf)) {
       return(NULL)
@@ -661,7 +661,7 @@ get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
 #' Accepts an optional `dx` argument to avoid relying on floating-point
 #' differences.
 #'
-#' @param .data Data frame output from [get_posterior_rho_densities()].
+#' @param .data Data frame output from [get_posterior_cor_densities()].
 #' @param dx Grid spacing (step size). If `NULL` (default), it is estimated
 #'        from the unique values of `x` (grid points) using [diff()].
 #'
@@ -669,7 +669,7 @@ get_posterior_rho_densities <- function(.data, grid_spacing = 1e-3) {
 #'         (mean posterior density).
 #'
 #' @export
-get_mean_posterior_rho <- function(.data, dx = NULL) {
+get_mean_posterior_cor <- function(.data, dx = NULL) {
 
   validate_column_inputs(
     col_names = c(".draw", "r", "x", "density"),
@@ -720,7 +720,7 @@ get_mean_posterior_rho <- function(.data, dx = NULL) {
 #'
 #' @details
 #' The posterior density function is first approximated using
-#' [get_posterior_rho_densities()], and quantiles are then sampled using
+#' [get_posterior_cor_densities()], and quantiles are then sampled using
 #' inverse transform sampling. If a seed is provided in `starter_seed`, it is
 #' used to generate different seeds for each MCMC draw, to ensure independence
 #' in the quantiles drawn for each posterior distribution, while retaining
@@ -773,7 +773,7 @@ get_sampled_quantiles <- function(
   }
 
   result <- .data %>%
-    get_posterior_rho_densities(grid_spacing = grid_spacing) %>%
+    get_posterior_cor_densities(grid_spacing = grid_spacing) %>%
     tidyr::nest(
       density_grid = tidyr::all_of(c("x", "density")),
       .by = tidyr::all_of(c(".draw", "r"))

@@ -95,10 +95,10 @@ plot_population_cor <- function(
   )
 
   trace_data <- input_data %>%
-    get_posterior_rho_densities()
+    get_posterior_cor_densities()
 
   mean_data <- trace_data %>%
-    get_mean_posterior_rho()
+    get_mean_posterior_cor()
 
   plot_data <- input_data %>%
     dplyr::select(

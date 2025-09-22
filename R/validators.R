@@ -4,7 +4,7 @@
 #'
 #' @description
 #' Internal helper function to validate the structure and contents of the
-#' posterior_args parameter passed to functions that use [posterior_rho_updf()].
+#' posterior_args parameter passed to functions that use [posterior_cor_updf()].
 #' Allowed arguments are: kappa, alternative, n_bins, and max_iter.
 #'
 #' @param posterior_args A named list of arguments or NULL
@@ -186,9 +186,9 @@ test_densities <- function(x, test_len = NULL) {
   )
 }
 
-# POSTERIOR_RHO ---------------------------------------------------------------
+# POSTERIOR -------------------------------------------------------------------
 
-#' Validate inputs for posterior_rho_updf function
+#' Validate inputs for posterior_cor_updf function
 #'
 #' @param r Numeric value. The observed sample correlation coefficient.
 #' @param n Integer The sample size.
@@ -201,7 +201,7 @@ test_densities <- function(x, test_len = NULL) {
 #' @return Named list containing the validated inputs.
 #'
 #' @noRd
-validate_posterior_rho_updf_input <- function(r, n, kappa, n_bins, max_iter) {
+validate_posterior_cor_updf_input <- function(r, n, kappa, n_bins, max_iter) {
 
   assert_double_wrap <- function(x, l = -Inf, u = Inf) {
     return(
