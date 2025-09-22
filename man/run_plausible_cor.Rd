@@ -68,7 +68,7 @@ from \code{mcmc_data}. If \code{NULL} (default), all samples are retained.}
 the random seed will not be set.}
 
 \item{posterior_args}{Named list of arguments passed to
-\code{\link[=posterior_rho_updf]{posterior_rho_updf()}}, which influence how the unnormalised posterior
+\code{\link[=posterior_cor_updf]{posterior_cor_updf()}}, which influence how the unnormalised posterior
 density function is computed for each Pearson correlation coefficient.
 The following arguments can be included:
 \itemize{
