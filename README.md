@@ -16,9 +16,10 @@ estimated latent parameters and observed covariates. It implements a
 *plausible values* approach (Ly et al., 2017) that properly accounts for
 uncertainty, enabling Bayesian inference on the correlation coefficient
 at both the sample and population level, without the need to re-fit the
-latent variable model. This is achieved through analytic solutions for
-the posterior distribution of the correlation coefficient (Ly et al.,
-2018; Kucharský et al., 2023).
+latent variable model. This is achieved through established methods for
+obtaining a posterior distribution based solely on an observed
+correlation coefficient and sample size (Ly et al., 2018; Kucharský et
+al., 2023; Van Doorn et al., 2018).
 
 The package includes functions for calculating, summarising,
 visualising, and comparing plausible correlations.
@@ -125,3 +126,8 @@ Kucharský, S., Wagenmakers, E.-J., Van den Bergh, D., & Ly, A. (2023).
 Analytic posterior distributions and Bayes Factor for Pearson Partial
 Correlation. *PsyArXiv Preprints*. DOI:
 [10.31234/osf.io/6muwy](https://doi.org/10.31234/osf.io/6muwy)
+
+Van Doorn, J., Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018).
+Bayesian inference for Kendall’s rank correlation coefficient. *The
+American Statistician*, *72*, 303-308. DOI:
+[10.1080/00031305.2016.1264998](https://doi.org/10.1080/00031305.2016.1264998)
