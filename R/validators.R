@@ -27,7 +27,7 @@ assert_posterior_args <- function(posterior_args) {
     x = names(posterior_args),
     type = "strict",
     subset.of = c(
-      "kappa", "alternative", "n_bins", "max_iter"
+      "alternative", "method", "kappa", "n_bins", "max_iter"
     )
   )
 

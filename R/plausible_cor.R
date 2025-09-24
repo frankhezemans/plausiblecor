@@ -3,13 +3,17 @@
 #' @description
 #' Implements a Bayesian approach for exploring individual differences in a
 #' model parameter that was estimated without reference to the observed
-#' covariate of interest. This function computes the Pearson correlation
-#' coefficient between subject-wise parameter values (estimated using MCMC
-#' sampling methods) and an observed covariate for each MCMC sample, resulting
-#' in a distribution of "plausible values" for the correlation coefficient. It
-#' additionally provides the posterior density function for each correlation
-#' coefficient, to enable inference about the latent correlation in the
-#' population (as opposed to the given sample of subjects).
+#' covariate of interest. This function computes the correlation coefficient
+#' between subject-wise parameter values (estimated using MCMC sampling methods)
+#' and an observed covariate for each MCMC sample, resulting in a distribution
+#' of "plausible values" for the correlation coefficient. It additionally
+#' provides the posterior density function for each correlation coefficient, to
+#' enable inference about the latent correlation in the broader population (as
+#' opposed to the given sample of subjects).
+#'
+#' Depending on the chosen method, either Pearson's product-moment correlation
+#' or Kendall's rank correlation is used. Partial correlation, which adjusts
+#' for confounders, is only implemented for Pearson's method.
 #'
 #' @param mcmc_data Data frame of MCMC samples in long format, where each row
 #'        represents a unique combination of MCMC draw, subject, and
@@ -44,6 +48,7 @@
 #'     \item{"greater"}{ Prior truncated to \eqn{\left[0, 1\right]} and renormalised}
 #'     \item{"less"}{ Prior truncated to \eqn{\left[-1, 0\right]} and renormalised}
 #'   }
+#' @param method Correlation method to use: `"pearson"` (default) or `"kendall"`.
 #' @param n_draws Optional integer denoting the number of MCMC samples to retain
 #'        from `mcmc_data`. If `NULL` (default), all samples are retained.
 #' @param rng_seed Optional integer denoting the random seed for sampling
@@ -54,18 +59,21 @@
 #'        density function is computed for each Pearson correlation coefficient.
 #'        The following arguments can be included:
 #'  * `kappa` Numeric value controlling the "concentration" of the
-#'        stretched beta prior on the correlation coefficient. Default is `1`,
-#'        resulting in a uniform prior.
+#'        stretched beta prior on the correlation coefficient. Default is `1`
+#'        if `method = "pearson"` and `2` if `method = "kendall"`, as these
+#'        values induce a uniform prior.
 #'  * `n_bins` Integer denoting the number of bins ("resolution") used
 #'        for the discretised grid of correlation values, for which the
 #'        unnormalised posterior density values are computed. Default is `1e3`.
-#'  * `max_iter` Integer denoting the maximum number of iterations
-#'        (attempts) to obtain a posterior density function for a given MCMC
-#'        sample. Default is `1e7`.
+#'  * `max_iter` Integer denoting the maximum number of iterations (attempts) to
+#'        solve generalised hypergeometric functions that are necessary to
+#'        compute the posterior density for `method = "pearson"`. Ignored for
+#'        `method = "kendall"`.
 #'
-#' @return A [tibble::tbl_df-class] with one row per MCMC sample containing:
+#' @return An object of class `"plausible_cor"`, which is a [tibble::tbl_df-class]
+#'   with one row per MCMC sample containing:
 #'   \item{.draw}{The MCMC sample ID}
-#'   \item{r}{Pearson correlation coefficient}
+#'   \item{r}{Correlation coefficient}
 #'   \item{n}{Number of complete observations used for correlation calculation}
 #'   \item{posterior_updf}{Function object for evaluating the unnormalised
 #'         posterior density at any correlation value between -1 and 1}
@@ -74,20 +82,17 @@
 #' This function implements the approach described by Ly et al. (2017) for
 #' exploring individual differences in cognitive-model-based neuroscience:
 #'
-#' 1. First, it computes the Pearson correlation between an estimated model
-#'    parameters and observed covariate separately for each MCMC sample,
-#'    resulting in a set of plausible correlation values for the given sample
-#'    of subjects.
-#'    If confounding variables are specified, the Pearson *partial* correlation
-#'    is computed, that is, the Pearson correlation between the model parameter
-#'    and covariate while accounting for the effects of confounding variables.
+#' 1. First, it computes the correlation between an estimated model parameter
+#'    and observed covariate separately for each MCMC sample, resulting in a set
+#'    of plausible correlation values for the given sample of subjects.
 #'    This step handles uncertainty in the estimation of individual subjects'
 #'    model parameters, and is suitable for inferences about the correlation
 #'    coefficient in the given sample of subjects. However, it does not account
 #'    for uncertainty in generalising from the sample to the population.
 #'
-#' 2. Second, it calculates the posterior density function for each (partial)
-#'    correlation using the analytical solution derived by Ly et al. (2018),
+#' 2. Second, it calculates the posterior density function for each
+#'    correlation using solutions by Ly et al. (2018) and Van Doorn et al. (2018)
+#'    for the Pearson and Kendall correlation coefficients, respectively,
 #'    resulting in a set of plausible posterior distributions of the correlation.
 #'    This handles uncertainty in generalizing from the sample to the
 #'    population, and is therefore suitable for inferences about the
@@ -100,17 +105,21 @@
 #' @references
 #' Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,
 #' & Matzke, D. (2017). A flexible and efficient hierarchical Bayesian approach
-#' to the exploration of individual differences in cognitive‐model‐based
+#' to the exploration of individual differences in cognitive-model-based
 #' neuroscience. In A. A. Moustafa (Ed.),  *Computational Models of Brain and
-#' Behavior* (pp. 467–479). Wiley. \doi{10.1002/9781119159193.ch34}
+#' Behavior* (pp. 467-479). Wiley. \doi{10.1002/9781119159193.ch34}
 #'
 #' Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Analytic posteriors for
-#' Pearson's correlation coefficient. *Statistica Neerlandica*, *72*, 4–13.
+#' Pearson's correlation coefficient. *Statistica Neerlandica*, *72*, 4-13.
 #' \doi{10.1111/stan.12111}
 #'
-#' Kucharský, S., Wagenmakers, E.-J., Van den Bergh, D., & Ly, A. (2023).
+#' Kucharsky, S., Wagenmakers, E.-J., Van den Bergh, D., & Ly, A. (2023).
 #' Analytic posterior distributions and Bayes Factor for Pearson Partial
 #' Correlation. *PsyArXiv Preprints*. \doi{10.31234/osf.io/6muwy}
+#'
+#' Van Doorn, J., Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Bayesian
+#' inference for Kendall's rank correlation coefficient. *The American Statistician*,
+#' *72*, 303-308. \doi{10.1080/00031305.2016.1264998}
 #'
 #' @export
 run_plausible_cor <- function(
@@ -122,6 +131,7 @@ run_plausible_cor <- function(
     covariate,
     confounders = NULL,
     alternative = c("two.sided", "greater", "less"),
+    method = c("pearson", "kendall"),
     n_draws = NULL,
     rng_seed = NULL,
     posterior_args = NULL
@@ -129,7 +139,17 @@ run_plausible_cor <- function(
 
   posterior_args <- posterior_args %||% list()
   posterior_args[["alternative"]] <- rlang::arg_match(alternative)
+  posterior_args[["method"]] <- rlang::arg_match(method)
   posterior_args <- assert_posterior_args(posterior_args)
+
+  if (posterior_args[["method"]] == "kendall" && !is.null(confounders)) {
+    rlang::abort(
+      message = paste0(
+        "Partial correlation is not implemented for Kendall's tau. ",
+        "Please use method = 'pearson'."
+      )
+    )
+  }
 
   column_names <- list(
     draw_id = draw_id,
@@ -187,7 +207,8 @@ run_plausible_cor_engine <- function(
     dplyr::summarise(
       cor_result = list(compute_cor(
         data = dplyr::pick(dplyr::everything()),
-        column_names = column_names
+        column_names = column_names,
+        cor_method = posterior_args[["method"]]
       )),
       .groups = "drop"
     ) %>%
@@ -232,7 +253,8 @@ run_plausible_cor_engine <- function(
 #' @noRd
 compute_cor <- function(
     data,
-    column_names
+    column_names,
+    cor_method
 ) {
 
   parameter_values <- data[[column_names[["parameter"]]]]
@@ -244,7 +266,7 @@ compute_cor <- function(
     r <- stats::cor(
       x = parameter_values,
       y = covariate_values,
-      method = "pearson"
+      method = cor_method
     )
     k <- 0
   } else {
@@ -449,11 +471,10 @@ summarise_plausible_cor <- function(
 #'
 #' @details
 #' For the sample-based comparison, the function computes the difference in the
-#' Pearson correlation coefficient for each `.draw` shared between the two data
-#' frames.
+#' correlation coefficient for each `.draw` shared between the two data frames.
 #'
 #' For the population-based comparison, the function draws quantile value(s)
-#' from the posterior distribution of each Pearson correlation (as defined by
+#' from the posterior distribution of each correlation (as defined by
 #' `posterior_updf`) and computes the difference. This allows for comparison at
 #' the population level rather than the specific sample of subjects.
 #'
@@ -463,9 +484,9 @@ summarise_plausible_cor <- function(
 #' @references
 #' Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,
 #' & Matzke, D. (2017). A flexible and efficient hierarchical Bayesian approach
-#' to the exploration of individual differences in cognitive‐model‐based
+#' to the exploration of individual differences in cognitive-model-based
 #' neuroscience. In A. A. Moustafa (Ed.),  *Computational Models of Brain and
-#' Behavior* (pp. 467–479). Wiley. \doi{10.1002/9781119159193.ch34}
+#' Behavior* (pp. 467-479). Wiley. \doi{10.1002/9781119159193.ch34}
 #'
 #' Heathcote, A., Lin, Y.S., Reynolds, A., Strickland, L., Gretton, M., &
 #' Matzke, D. (2019). Dynamic models of choice. *Behavior Research Methods*,
@@ -587,9 +608,6 @@ compare_plausible_cors <- function(
 #' @description
 #' Helper function that evaluates each posterior density function in the output
 #' of [run_plausible_cor()] over a shared grid in the range \eqn{\left[-1, 1\right]}.
-#' Typical users would not have to call this function, instead relying on
-#' [summarise_plausible_cor()], [compare_plausible_cors()], and
-#' [plot_population_cor()].
 #'
 #' @param .data Data frame output from [run_plausible_cor()].
 #' @param grid_spacing The step size for the grid of correlation values to
@@ -598,7 +616,7 @@ compare_plausible_cors <- function(
 #' @return A data frame where each row corresponds to one density value for a
 #'         given posterior density function.
 #'
-#' @export
+#' @noRd
 get_posterior_cor_densities <- function(.data, grid_spacing = 1e-3) {
 
   validate_column_inputs(
@@ -655,20 +673,18 @@ get_posterior_cor_densities <- function(.data, grid_spacing = 1e-3) {
 #'
 #' @description
 #' Helper function that computes the mean posterior density across MCMC samples,
-#' based on the evaluated densities on a shared grid. Typical users would not
-#' have to call this function, instead relying on [summarise_plausible_cor()],
-#' [compare_plausible_cors()], and [plot_population_cor()].
+#' based on the evaluated densities on a shared grid.
 #' Accepts an optional `dx` argument to avoid relying on floating-point
 #' differences.
 #'
-#' @param .data Data frame output from [get_posterior_cor_densities()].
+#' @param .data Data frame output from `get_posterior_cor_densities()`.
 #' @param dx Grid spacing (step size). If `NULL` (default), it is estimated
 #'        from the unique values of `x` (grid points) using [diff()].
 #'
 #' @return A tibble with columns `x` (grid points) and `density`
 #'         (mean posterior density).
 #'
-#' @export
+#' @noRd
 get_mean_posterior_cor <- function(.data, dx = NULL) {
 
   validate_column_inputs(
@@ -720,7 +736,7 @@ get_mean_posterior_cor <- function(.data, dx = NULL) {
 #'
 #' @details
 #' The posterior density function is first approximated using
-#' [get_posterior_cor_densities()], and quantiles are then sampled using
+#' `get_posterior_cor_densities()`, and quantiles are then sampled using
 #' inverse transform sampling. If a seed is provided in `starter_seed`, it is
 #' used to generate different seeds for each MCMC draw, to ensure independence
 #' in the quantiles drawn for each posterior distribution, while retaining

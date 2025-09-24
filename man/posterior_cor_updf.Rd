@@ -2,7 +2,7 @@
 % Please edit documentation in R/posterior.R
 \name{posterior_cor_updf}
 \alias{posterior_cor_updf}
-\title{Calculate Unnormalised Posterior Density for Correlation Coefficient}
+\title{Approximation of Posterior Density Function for Correlation Coefficient}
 \usage{
 posterior_cor_updf(
   r,
@@ -41,7 +41,8 @@ is \code{1e3}.}
 
 \item{max_iter}{Integer. Maximum number of iterations (attempts) to solve
 generalised hypergeometric functions that are necessary to compute
-the posterior density. Default is \code{1e7}. See details.}
+the posterior density for \code{method = "pearson"}. Default is \code{1e7}. See
+details.}
 }
 \value{
 A function that evaluates the unnormalized posterior density at any
@@ -76,6 +77,17 @@ several thousand attempts to find the solution. Here, we cautiously set the
 default \code{max_iter} to \code{1e7}, but note that the original default in
 \code{\link[hypergeo:genhypergeo]{hypergeo::genhypergeo()}} is much lower (\code{2e3}).
 
+For \code{method = "kendall"}, the posterior density is based on the asymptotic
+normal approximation to the sampling distribution of Kendall's rank
+correlation coefficient, tau (see Van Doorn, 2018, and references therein
+for details). In practice, the quality of this normal approximation depends
+on both the value of the observed tau \code{r} and the sample size \code{n}: the
+approximation improves exponentially as \code{n} increases, but larger values of
+\code{r} require larger \code{n} to achieve the same accuracy. Users should be cautious
+when applying this method to small samples and/or strong correlations.
+A warning is issued if the given values of \code{r} and \code{n} fail to meet
+rule-of-thumb criteria based on simulation results from Van Doorn et al. (2018).
+
 Any undefined or non-finite estimate of the posterior density is treated as
 \code{NA} and ignored by \code{\link[stats:approxfun]{stats::approxfun()}} when constructing the function.
 
@@ -90,14 +102,19 @@ This function was primarily adapted from code that was originally written by
 Alexander Ly, adapted by Dora Matzke, and then released with the Dynamic
 Models of Choice toolbox (Heathcote et al., 2019). Furthermore, code for
 Kendall's rank correlation was adapted from code written by Alexander Ly and
-Johnny van Doorn that was released with the \code{bstats} R package.
+Johnny van Doorn that was released with the \code{bstats} R package (which is used
+under the hood by the stand-alone statistics programme JASP).
 }
 \references{
+Heathcote, A., Lin, Y.S., Reynolds, A., Strickland, L., Gretton, M., &
+Matzke, D. (2019). Dynamic models of choice. \emph{Behavior Research Methods},
+\emph{51}, 961-985. \doi{10.3758/s13428-018-1067-y}
+
 Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Analytic posteriors for
 Pearson's correlation coefficient. \emph{Statistica Neerlandica}, \emph{72}, 4–13.
 \doi{10.1111/stan.12111}
 
-Heathcote, A., Lin, Y.S., Reynolds, A., Strickland, L., Gretton, M., &
-Matzke, D. (2019). Dynamic models of choice. \emph{Behavior Research Methods},
-\emph{51}, 961-985. \doi{10.3758/s13428-018-1067-y}
+Van Doorn, J., Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Bayesian
+inference for Kendall's rank correlation coefficient. \emph{The American Statistician},
+\emph{72}, 303-308. \doi{10.1080/00031305.2016.1264998}
 }

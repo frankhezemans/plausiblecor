@@ -1,4 +1,4 @@
-#' Calculate Unnormalised Posterior Density for Correlation Coefficient
+#' Approximation of Posterior Density Function for Correlation Coefficient
 #'
 #' @description
 #' This function calculates an approximation to the posterior density of
@@ -28,7 +28,8 @@
 #'        is `1e3`.
 #' @param max_iter Integer. Maximum number of iterations (attempts) to solve
 #'        generalised hypergeometric functions that are necessary to compute
-#'        the posterior density. Default is `1e7`. See details.
+#'        the posterior density for `method = "pearson"`. Default is `1e7`. See
+#'        details.
 #'
 #' @return A function that evaluates the unnormalized posterior density at any
 #'         correlation value between `-1` and `1`. The function is proportional
@@ -54,6 +55,17 @@
 #' default `max_iter` to `1e7`, but note that the original default in
 #' [hypergeo::genhypergeo()] is much lower (`2e3`).
 #'
+#' For `method = "kendall"`, the posterior density is based on the asymptotic
+#' normal approximation to the sampling distribution of Kendall's rank
+#' correlation coefficient, tau (see Van Doorn, 2018, and references therein
+#' for details). In practice, the quality of this normal approximation depends
+#' on both the value of the observed tau `r` and the sample size `n`: the
+#' approximation improves exponentially as `n` increases, but larger values of
+#' `r` require larger `n` to achieve the same accuracy. Users should be cautious
+#' when applying this method to small samples and/or strong correlations.
+#' A warning is issued if the given values of `r` and `n` fail to meet
+#' rule-of-thumb criteria based on simulation results from Van Doorn et al. (2018).
+#'
 #' Any undefined or non-finite estimate of the posterior density is treated as
 #' `NA` and ignored by [stats::approxfun()] when constructing the function.
 #'
@@ -68,16 +80,21 @@
 #' Alexander Ly, adapted by Dora Matzke, and then released with the Dynamic
 #' Models of Choice toolbox (Heathcote et al., 2019). Furthermore, code for
 #' Kendall's rank correlation was adapted from code written by Alexander Ly and
-#' Johnny van Doorn that was released with the `bstats` R package.
+#' Johnny van Doorn that was released with the `bstats` R package (which is used
+#' under the hood by the stand-alone statistics programme JASP).
 #'
 #' @references
+#' Heathcote, A., Lin, Y.S., Reynolds, A., Strickland, L., Gretton, M., &
+#' Matzke, D. (2019). Dynamic models of choice. *Behavior Research Methods*,
+#' *51*, 961-985. \doi{10.3758/s13428-018-1067-y}
+#'
 #' Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Analytic posteriors for
 #' Pearson's correlation coefficient. *Statistica Neerlandica*, *72*, 4–13.
 #' \doi{10.1111/stan.12111}
 #'
-#' Heathcote, A., Lin, Y.S., Reynolds, A., Strickland, L., Gretton, M., &
-#' Matzke, D. (2019). Dynamic models of choice. *Behavior Research Methods*,
-#' *51*, 961-985. \doi{10.3758/s13428-018-1067-y}
+#' Van Doorn, J., Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Bayesian
+#' inference for Kendall's rank correlation coefficient. *The American Statistician*,
+#' *72*, 303-308. \doi{10.1080/00031305.2016.1264998}
 #'
 #' @export
 posterior_cor_updf <- function(
@@ -121,7 +138,8 @@ posterior_cor_updf <- function(
   cor_grid <- create_cor_grid(r, n, n_bins)
 
   if (method == "kendall") {
-    # TODO code here
+    check_kendall_normal_approx(r, n)
+    d <- posterior_tau(r, n, cor_grid, kappa, alternative)
   } else {
     if (abs(r) < sqrt(.Machine$double.eps)) {
       d <- posterior_rho_jeffreys(r, n, cor_grid, kappa, alternative, max_iter)
@@ -199,7 +217,7 @@ posterior_cor_updf <- function(
 posterior_rho_exact <- function(r, n, cor_grid, kappa, alternative, max_iter) {
   result <- bf_rho_exact(r, n, kappa, max_iter) *
     likelihood_rho_exact(r, n, cor_grid, max_iter) *
-    prior_rho(cor_grid, kappa, alternative, method = "pearson")
+    prior_cor(cor_grid, kappa, alternative, method = "pearson")
   return(result)
 }
 
@@ -223,7 +241,7 @@ posterior_rho_exact <- function(r, n, cor_grid, kappa, alternative, max_iter) {
 posterior_rho_jeffreys <- function(r, n, cor_grid, kappa, alternative, max_iter) {
   result <- bf_rho_jeffreys(r, n, kappa, max_iter) *
     likelihood_rho_jeffreys(r, n, cor_grid) *
-    prior_rho(cor_grid, kappa, alternative, method = "pearson")
+    prior_cor(cor_grid, kappa, alternative, method = "pearson")
   return(result)
 }
 
@@ -374,6 +392,127 @@ likelihood_rho_jeffreys <- function(r, n, cor_grid) {
 
 # KENDALL ---------------------------------------------------------------------
 
+#' Compute posterior density for Kendall's tau
+#'
+#' Computes the posterior density for Kendall's rank correlation coefficient.
+#' The method relies on the asymptotic normal approximation to the sampling
+#' distribution of Kendall's tau. Numerical integration (trapezoidal rule) is
+#' used to normalise the posterior density over a discretised grid.
+#'
+#' @param r Observed Kendall's tau correlation coefficient (scalar).
+#' @param n Sample size.
+#' @param cor_grid Numeric vector of grid values for tau over which the
+#'   posterior density is evaluated.
+#' @param kappa Concentration parameter of the prior distribution.
+#' @param alternative Character string specifying the alternative hypothesis.
+#' @return Numeric vector of posterior density values over `cor_grid`.
+#' @noRd
+posterior_tau <- function(r, n, cor_grid, kappa, alternative) {
+  density <- posterior_tau_integrand(r, n, cor_grid, kappa, alternative)
+  dx <- diff(cor_grid)
+  normalising_constant <- sum(
+    (density[-1] + density[-length(density)]) / 2 * dx
+  )
+  result <- density / normalising_constant
+  return(result)
+}
+
+#' Posterior integrand for Kendall's tau
+#'
+#' Computes the unnormalised posterior density, i.e. the product of the
+#' likelihood and prior for each grid value of tau.
+#'
+#' @inheritParams posterior_tau
+#' @return Numeric vector of unnormalised posterior densities.
+#' @noRd
+posterior_tau_integrand <- function(r, n, cor_grid, kappa, alternative) {
+  result <- likelihood_tau(r, n, cor_grid) *
+    prior_cor(cor_grid, kappa, alternative, method = "kendall")
+  return(result)
+}
+
+#' Likelihood function for Kendall's tau
+#'
+#' Evaluates the normal approximation likelihood of observing Kendall's
+#' tau, expressed in terms of the standardised test statistic \eqn{T^*}.
+#'
+#' @param r Observed Kendall's tau correlation coefficient (scalar).
+#' @param n Sample size.
+#' @param cor_grid Numeric vector of candidate population tau values.
+#' @param log_d Logical; if TRUE, return log-likelihood values.
+#' @return Numeric vector of (log-)likelihood values.
+#' @noRd
+likelihood_tau <- function(r, n, cor_grid, log_d = FALSE) {
+  t_star <- standardise_tau(r, n)
+  mu_vec <- (3 / 2) * cor_grid * sqrt(n)
+  result <- stats::dnorm(
+    x = t_star,
+    mean = mu_vec,
+    sd = 1,
+    log = log_d
+  )
+  return(result)
+}
+
+#' Standardised test statistic for Kendall's tau
+#'
+#' Computes the test statistic \eqn{T^*} used in the normal approximation
+#' to the sampling distribution of Kendall's tau.
+#'
+#' @param r Observed Kendall's tau correlation coefficient (scalar).
+#' @param n Sample size.
+#' @return Numeric scalar, the standardised statistic \eqn{T^*}.
+#' @noRd
+standardise_tau <- function(r, n) {
+  numerator <- r * ((n * (n - 1)) / 2)
+  denominator <- sqrt(n * (n - 1) * (2 * n + 5) / 18)
+  result <- numerator / denominator
+  return(result)
+}
+
+#' Check adequacy of the normal approximation for Kendall's tau
+#'
+#' The posterior density is based on the asymptotic normal approximation to the
+#' sampling distribution of Kendall's tau. The adequacy of this approximation
+#' depends on both the sample size `n` and the magnitude of the observed
+#' correlation coefficient `r`. Van Doorn et al. (2018) provide simulation
+#' results indicating the smallest `n` required for different ranges of `abs(r)`
+#' such that the Kolmogorov–Smirnov statistic does not exceed 0.038. This
+#' function checks whether the observed combination of `r` and `n` meets these
+#' criteria, and issues a warning if not.
+#'
+#' @param r Numeric scalar. Observed Kendall's tau.
+#' @param n Integer scalar. Sample size.
+#'
+#' @details
+#' The simulation data from Van Doorn et al. (2018) are openly available at:
+#' \url{https://osf.io/download/7u7p2/}.
+#'
+#' @return Invisibly returns `NULL`. Called for its side effect of issuing a
+#' warning if the (r, n) combination falls below the recommended thresholds.
+#'
+#' @noRd
+check_kendall_normal_approx <- function(r, n) {
+  tau_abs <- abs(r)
+  min_n <- dplyr::case_when(
+    tau_abs < 0.1 ~ 10L,
+    tau_abs < 0.3 ~ 15L,
+    tau_abs < 0.5 ~ 20L,
+    tau_abs < 0.8 ~ 30L,
+    TRUE          ~ 100L
+  )
+  if (n < min_n) {
+    rlang::warn(
+      message = paste0(
+        "Normal approximation for Kendall's tau may be inaccurate: ",
+        "observed |tau| = ", round(tau_abs, 3), ", n = ", n,
+        " (requires n >= ", min_n, ")."
+      )
+    )
+  }
+  invisible(NULL)
+}
+
 
 # SHARED ----------------------------------------------------------------------
 
@@ -389,7 +528,7 @@ likelihood_rho_jeffreys <- function(r, n, cor_grid) {
 #'
 #' @return Numeric vector of prior density values.
 #' @noRd
-prior_rho <- function(cor_grid, kappa, alternative, method) {
+prior_cor <- function(cor_grid, kappa, alternative, method) {
   if (method == "kendall") {
     beta_term <- (2^(-2 / kappa)) / beta(a = 1 / kappa, b = 1 / kappa)
     cos_term <- cos((pi * cor_grid) / 2)^(2 / kappa - 1)

@@ -65,11 +65,10 @@ computing the difference.
 }
 \details{
 For the sample-based comparison, the function computes the difference in the
-Pearson correlation coefficient for each \code{.draw} shared between the two data
-frames.
+correlation coefficient for each \code{.draw} shared between the two data frames.
 
 For the population-based comparison, the function draws quantile value(s)
-from the posterior distribution of each Pearson correlation (as defined by
+from the posterior distribution of each correlation (as defined by
 \code{posterior_updf}) and computes the difference. This allows for comparison at
 the population level rather than the specific sample of subjects.
 
@@ -79,9 +78,9 @@ Models of Choice toolbox (Heathcote et al., 2019).
 \references{
 Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,
 & Matzke, D. (2017). A flexible and efficient hierarchical Bayesian approach
-to the exploration of individual differences in cognitive‐model‐based
+to the exploration of individual differences in cognitive-model-based
 neuroscience. In A. A. Moustafa (Ed.),  \emph{Computational Models of Brain and
-Behavior} (pp. 467–479). Wiley. \doi{10.1002/9781119159193.ch34}
+Behavior} (pp. 467-479). Wiley. \doi{10.1002/9781119159193.ch34}
 
 Heathcote, A., Lin, Y.S., Reynolds, A., Strickland, L., Gretton, M., &
 Matzke, D. (2019). Dynamic models of choice. \emph{Behavior Research Methods},

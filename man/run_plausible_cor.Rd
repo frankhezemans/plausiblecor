@@ -13,6 +13,7 @@ run_plausible_cor(
   covariate,
   confounders = NULL,
   alternative = c("two.sided", "greater", "less"),
+  method = c("pearson", "kendall"),
   n_draws = NULL,
   rng_seed = NULL,
   posterior_args = NULL
@@ -60,6 +61,8 @@ computed for each Pearson correlation coefficient:
 \item{"less"}{ Prior truncated to \eqn{\left[-1, 0\right]} and renormalised}
 }}
 
+\item{method}{Correlation method to use: \code{"pearson"} (default) or \code{"kendall"}.}
+
 \item{n_draws}{Optional integer denoting the number of MCMC samples to retain
 from \code{mcmc_data}. If \code{NULL} (default), all samples are retained.}
 
@@ -73,20 +76,23 @@ density function is computed for each Pearson correlation coefficient.
 The following arguments can be included:
 \itemize{
 \item \code{kappa} Numeric value controlling the "concentration" of the
-stretched beta prior on the correlation coefficient. Default is \code{1},
-resulting in a uniform prior.
+stretched beta prior on the correlation coefficient. Default is \code{1}
+if \code{method = "pearson"} and \code{2} if \code{method = "kendall"}, as these
+values induce a uniform prior.
 \item \code{n_bins} Integer denoting the number of bins ("resolution") used
 for the discretised grid of correlation values, for which the
 unnormalised posterior density values are computed. Default is \code{1e3}.
-\item \code{max_iter} Integer denoting the maximum number of iterations
-(attempts) to obtain a posterior density function for a given MCMC
-sample. Default is \code{1e7}.
+\item \code{max_iter} Integer denoting the maximum number of iterations (attempts) to
+solve generalised hypergeometric functions that are necessary to
+compute the posterior density for \code{method = "pearson"}. Ignored for
+\code{method = "kendall"}.
 }}
 }
 \value{
-A \link[tibble:tbl_df-class]{tibble::tbl_df} with one row per MCMC sample containing:
+An object of class \code{"plausible_cor"}, which is a \link[tibble:tbl_df-class]{tibble::tbl_df}
+with one row per MCMC sample containing:
 \item{.draw}{The MCMC sample ID}
-\item{r}{Pearson correlation coefficient}
+\item{r}{Correlation coefficient}
 \item{n}{Number of complete observations used for correlation calculation}
 \item{posterior_updf}{Function object for evaluating the unnormalised
 posterior density at any correlation value between -1 and 1}
@@ -94,31 +100,32 @@ posterior density at any correlation value between -1 and 1}
 \description{
 Implements a Bayesian approach for exploring individual differences in a
 model parameter that was estimated without reference to the observed
-covariate of interest. This function computes the Pearson correlation
-coefficient between subject-wise parameter values (estimated using MCMC
-sampling methods) and an observed covariate for each MCMC sample, resulting
-in a distribution of "plausible values" for the correlation coefficient. It
-additionally provides the posterior density function for each correlation
-coefficient, to enable inference about the latent correlation in the
-population (as opposed to the given sample of subjects).
+covariate of interest. This function computes the correlation coefficient
+between subject-wise parameter values (estimated using MCMC sampling methods)
+and an observed covariate for each MCMC sample, resulting in a distribution
+of "plausible values" for the correlation coefficient. It additionally
+provides the posterior density function for each correlation coefficient, to
+enable inference about the latent correlation in the broader population (as
+opposed to the given sample of subjects).
+
+Depending on the chosen method, either Pearson's product-moment correlation
+or Kendall's rank correlation is used. Partial correlation, which adjusts
+for confounders, is only implemented for Pearson's method.
 }
 \details{
 This function implements the approach described by Ly et al. (2017) for
 exploring individual differences in cognitive-model-based neuroscience:
 \enumerate{
-\item First, it computes the Pearson correlation between an estimated model
-parameters and observed covariate separately for each MCMC sample,
-resulting in a set of plausible correlation values for the given sample
-of subjects.
-If confounding variables are specified, the Pearson \emph{partial} correlation
-is computed, that is, the Pearson correlation between the model parameter
-and covariate while accounting for the effects of confounding variables.
+\item First, it computes the correlation between an estimated model parameter
+and observed covariate separately for each MCMC sample, resulting in a set
+of plausible correlation values for the given sample of subjects.
 This step handles uncertainty in the estimation of individual subjects'
 model parameters, and is suitable for inferences about the correlation
 coefficient in the given sample of subjects. However, it does not account
 for uncertainty in generalising from the sample to the population.
-\item Second, it calculates the posterior density function for each (partial)
-correlation using the analytical solution derived by Ly et al. (2018),
+\item Second, it calculates the posterior density function for each
+correlation using solutions by Ly et al. (2018) and Van Doorn et al. (2018)
+for the Pearson and Kendall correlation coefficients, respectively,
 resulting in a set of plausible posterior distributions of the correlation.
 This handles uncertainty in generalizing from the sample to the
 population, and is therefore suitable for inferences about the
@@ -132,15 +139,19 @@ range of \eqn{\left[-1, 1\right]}.
 \references{
 Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,
 & Matzke, D. (2017). A flexible and efficient hierarchical Bayesian approach
-to the exploration of individual differences in cognitive‐model‐based
+to the exploration of individual differences in cognitive-model-based
 neuroscience. In A. A. Moustafa (Ed.),  \emph{Computational Models of Brain and
-Behavior} (pp. 467–479). Wiley. \doi{10.1002/9781119159193.ch34}
+Behavior} (pp. 467-479). Wiley. \doi{10.1002/9781119159193.ch34}
 
 Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Analytic posteriors for
-Pearson's correlation coefficient. \emph{Statistica Neerlandica}, \emph{72}, 4–13.
+Pearson's correlation coefficient. \emph{Statistica Neerlandica}, \emph{72}, 4-13.
 \doi{10.1111/stan.12111}
 
-Kucharský, S., Wagenmakers, E.-J., Van den Bergh, D., & Ly, A. (2023).
+Kucharsky, S., Wagenmakers, E.-J., Van den Bergh, D., & Ly, A. (2023).
 Analytic posterior distributions and Bayes Factor for Pearson Partial
 Correlation. \emph{PsyArXiv Preprints}. \doi{10.31234/osf.io/6muwy}
+
+Van Doorn, J., Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Bayesian
+inference for Kendall's rank correlation coefficient. \emph{The American Statistician},
+\emph{72}, 303-308. \doi{10.1080/00031305.2016.1264998}
 }
