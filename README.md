@@ -27,18 +27,19 @@ visualising, and comparing plausible correlations.
 ## Statement of need
 
 To the best of our knowledge, this methodology has so far only been
-implemented in two open-source tools: the Dynamic Models of Choice
-([`DMC`](https://osf.io/pbwx8/)) toolbox (Heathcote et al., 2019), and
-the [`TreeBUGS`](https://github.com/danheck/TreeBUGS) R package (Heck et
-al., 2018). Both of these implementations are tied to specific modelling
-frameworks and software: `DMC` focuses on models of speeded
-decision-making and response inhibition; `TreeBUGS` focuses on
+(partially) implemented in two open-source tools: the Dynamic Models of
+Choice ([`DMC`](https://osf.io/pbwx8/)) toolbox (Heathcote et al.,
+2019), and the [`TreeBUGS`](https://github.com/danheck/TreeBUGS) R
+package (Heck et al., 2018). Both of these implementations are tied to
+specific modelling frameworks and software: `DMC` focuses on models of
+speeded decision-making and response inhibition; `TreeBUGS` focuses on
 multinomial processing tree models and requires the JAGS MCMC library.
 
 In contrast, `plausiblecor` offers a more **modular and model-agnostic
-approach**, taking arbitrary data frames of MCMC samples and covariates,
-and providing a compact, self-contained workflow for post-hoc
-correlation analysis with flexible tools for summarisation and
+approach**, supporting multiple correlation types and alternative
+hypotheses. It works directly with arbitrary data frames of MCMC samples
+and covariates, providing a compact, self-contained workflow for
+post-hoc correlation analysis with flexible tools for summarisation and
 visualisation.
 
 ## Installation
