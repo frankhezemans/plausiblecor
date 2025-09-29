@@ -23,34 +23,38 @@ run_plausible_cor(
 \item{mcmc_data}{Data frame of MCMC samples in long format, where each row
 represents a unique combination of MCMC draw, subject, and
 parameter value.
-Alternatively, an object of class \code{"emc"} can be provided, which corresponds
-to a model fit using the \code{EMC2} package (\code{\link[EMC2:EMC2-package]{EMC2::EMC2()}}). In this case,
-\code{\link[EMC2:parameters]{EMC2::parameters()}} is used to extract subject-wise MCMC samples of the
-model parameters.}
+Alternatively, an object of class \code{"emc"} can be provided, which
+corresponds to a model fit using the \code{EMC2} package (\code{\link[EMC2:EMC2-package]{EMC2::EMC2()}}).
+In this case, the S3 generic \code{\link[EMC2:parameters]{EMC2::parameters()}} is used to extract
+subject-wise MCMC samples of the model parameters.}
 
 \item{covariate_data}{Optional data frame containing covariate data (if not
 already in \code{mcmc_data}). Should contain one row per participant.}
 
 \item{draw_id}{String denoting the column with MCMC sample IDs in \code{mcmc_data}.
-If \code{mcmc_data} is an object of class \code{"emc"}, the provided \code{draw_id} is
-used to create an MCMC sample ID column, since the output of
+For consistency across subsequent plotting and summarising functions,
+this column is renamed to \code{".draw"} in the returned data frame.
+If \code{mcmc_data} is an object of class \code{"emc"}, this argument is used to
+create an MCMC sample ID column, since the output of
 \code{\link[EMC2:parameters]{EMC2::parameters()}} does not include such a column by default.}
 
-\item{subject_id}{String denoting the column with subject IDs. If both \code{mcmc_data}
-and \code{covariate_data} are provided, this column name should be consistent
-across data frames.
+\item{subject_id}{String denoting the column with subject IDs. If both
+\code{mcmc_data} and \code{covariate_data} are provided, this column name should
+be consistent across data frames.
 If \code{mcmc_data} is an object of class \code{"emc"}, \code{subject_id} must be
 equal to \code{"subjects"}.}
 
 \item{parameter}{String denoting the column with the estimated model
 parameter.}
 
-\item{covariate}{String denoting the column with the observed covariate of interest.}
+\item{covariate}{String denoting the column with the observed covariate of
+interest.}
 
-\item{confounders}{Optional character vector denoting the column(s) in \code{covariate_data}
-that are confounding or "controlling" variables, that is, variables that are
-associated with both \code{parameter} and \code{covariate}, and therefore contaminate
-the direct association between \code{parameter} and \code{covariate}.}
+\item{confounders}{Optional character vector denoting the column(s) in
+\code{mcmc_data} and/or \code{covariate_data} that are confounding or
+"controlling" variables. That is, variables that are associated with
+both \code{parameter} and \code{covariate}, and therefore contaminate the direct
+association of interest.}
 
 \item{alternative}{Character string specifying the alternative hypothesis,
 which influences how the unnormalised posterior density function is

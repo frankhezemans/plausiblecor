@@ -18,28 +18,32 @@
 #' @param mcmc_data Data frame of MCMC samples in long format, where each row
 #'        represents a unique combination of MCMC draw, subject, and
 #'        parameter value.
-#'        Alternatively, an object of class `"emc"` can be provided, which corresponds
-#'        to a model fit using the `EMC2` package ([EMC2::EMC2()]). In this case,
-#'        [EMC2::parameters()] is used to extract subject-wise MCMC samples of the
-#'        model parameters.
+#'        Alternatively, an object of class `"emc"` can be provided, which
+#'        corresponds to a model fit using the `EMC2` package ([EMC2::EMC2()]).
+#'        In this case, the S3 generic [EMC2::parameters()] is used to extract
+#'        subject-wise MCMC samples of the model parameters.
 #' @param covariate_data Optional data frame containing covariate data (if not
 #'        already in `mcmc_data`). Should contain one row per participant.
 #' @param draw_id String denoting the column with MCMC sample IDs in `mcmc_data`.
-#'        If `mcmc_data` is an object of class `"emc"`, the provided `draw_id` is
-#'        used to create an MCMC sample ID column, since the output of
+#'        For consistency across subsequent plotting and summarising functions,
+#'        this column is renamed to `".draw"` in the returned data frame.
+#'        If `mcmc_data` is an object of class `"emc"`, this argument is used to
+#'        create an MCMC sample ID column, since the output of
 #'        [EMC2::parameters()] does not include such a column by default.
-#' @param subject_id String denoting the column with subject IDs. If both `mcmc_data`
-#'        and `covariate_data` are provided, this column name should be consistent
-#'        across data frames.
+#' @param subject_id String denoting the column with subject IDs. If both
+#'        `mcmc_data` and `covariate_data` are provided, this column name should
+#'        be consistent across data frames.
 #'        If `mcmc_data` is an object of class `"emc"`, `subject_id` must be
 #'        equal to `"subjects"`.
 #' @param parameter String denoting the column with the estimated model
 #'        parameter.
-#' @param covariate String denoting the column with the observed covariate of interest.
-#' @param confounders Optional character vector denoting the column(s) in `covariate_data`
-#'        that are confounding or "controlling" variables, that is, variables that are
-#'        associated with both `parameter` and `covariate`, and therefore contaminate
-#'        the direct association between `parameter` and `covariate`.
+#' @param covariate String denoting the column with the observed covariate of
+#'        interest.
+#' @param confounders Optional character vector denoting the column(s) in
+#'        `mcmc_data` and/or `covariate_data` that are confounding or
+#'        "controlling" variables. That is, variables that are associated with
+#'        both `parameter` and `covariate`, and therefore contaminate the direct
+#'        association of interest.
 #' @param alternative Character string specifying the alternative hypothesis,
 #'        which influences how the unnormalised posterior density function is
 #'        computed for each Pearson correlation coefficient:
@@ -930,88 +934,150 @@ prep_plausible_cor_data <- function(
   validate_column_inputs(
     col_names = column_names[c("draw_id", "subject_id", "parameter", "covariate")]
   )
+  draw_id <- column_names[["draw_id"]]
+  subject_id <- column_names[["subject_id"]]
+  parameter <- column_names[["parameter"]]
+  covariate <- column_names[["covariate"]]
 
+  has_confounders <- !is.null(column_names[["confounders"]])
+  if (has_confounders) {
+    validate_column_inputs(col_names = column_names[["confounders"]])
+    confounders <- column_names[["confounders"]]
+  }
+
+  # step 1: MCMC samples of model parameter of interest
   validate_column_inputs(
-    col_names = column_names[c("draw_id", "subject_id", "parameter")],
+    col_names = c(draw_id, subject_id, parameter),
     data_frame = mcmc_data,
     data_name = "mcmc_data"
   )
+  mcmc_data <- mcmc_data %>%
+    dplyr::rename(
+      dplyr::all_of(c(.draw = draw_id))
+    )
+  mcmc_data_clean <- mcmc_data %>%
+    dplyr::select(
+      dplyr::all_of(c(".draw", subject_id, parameter))
+    )
 
-  covariate <- column_names[["covariate"]]
-  subject_id <- column_names[["subject_id"]]
-  confounders <- column_names[["confounders"]]
-
-  if (covariate %in% names(mcmc_data)) {
-
-    data <- mcmc_data
-
-  } else if (!is.null(covariate_data)) {
-
+  # step 2: covariate
+  covariate_in_mcmc <- covariate %in% names(mcmc_data)
+  covariate_in_cov <- covariate %in% names(covariate_data)
+  if (covariate_in_mcmc) {
     validate_column_inputs(
-      col_names = c(
-        subject_id = subject_id,
-        covariate = covariate,
-        if (!is.null(confounders)) {
-          stats::setNames(confounders, paste0("confounder_", confounders))
-        }
-      ),
+      col_names = c(".draw", subject_id, covariate),
+      data_frame = mcmc_data,
+      data_name = "mcmc_data"
+    )
+    covariate_data_clean <- mcmc_data %>%
+      dplyr::select(
+        dplyr::all_of(c(".draw", subject_id, covariate))
+      )
+    mcmc_covariate_join_columns <- c(".draw", subject_id)
+  } else if (covariate_in_cov) {
+    validate_column_inputs(
+      col_names = c(subject_id, covariate),
       data_frame = covariate_data,
       data_name = "covariate_data"
     )
-
     covariate_data_clean <- covariate_data %>%
-      dplyr::select(dplyr::all_of(c(subject_id, covariate, confounders))) %>%
-      dplyr::distinct()
-
-    n_subs <- length(unique(covariate_data_clean[[subject_id]]))
-    if (nrow(covariate_data_clean) != n_subs) {
+      dplyr::select(
+        dplyr::all_of(c(subject_id, covariate))
+      )
+    n_subjects <- dplyr::n_distinct(
+      covariate_data_clean[[subject_id]]
+    )
+    if (nrow(covariate_data_clean) != n_subjects) {
       rlang::abort(
-        message = "Covariate data should have one unique value per subject."
+        message = "'covariate_data' should have one unique value per subject."
       )
     }
-
-    data <- dplyr::left_join(
-      x = mcmc_data,
-      y = covariate_data_clean,
-      by = subject_id
-    )
-
+    mcmc_covariate_join_columns <- subject_id
   } else {
     rlang::abort(
       message = paste0(
-        "Covariate column '", covariate, "' not found in 'mcmc_data', ",
-        "and no 'covariate_data' provided."
+        "Covariate '", covariate, "' not found in 'mcmc_data' ",
+        "or 'covariate_data'."
       )
     )
   }
 
-  keep_cols <- c(
-    ".draw",
-    column_names[["parameter"]],
-    covariate,
-    confounders
+  result <- dplyr::left_join(
+    x = mcmc_data_clean,
+    y = covariate_data_clean,
+    by = mcmc_covariate_join_columns
   )
 
-  data <- data %>%
-    dplyr::rename(dplyr::all_of(c(.draw = column_names[["draw_id"]]))) %>%
-    dplyr::select(dplyr::all_of(keep_cols))
-
-  if (anyNA(data)) {
-    rlang::warn(message = paste0(
-      "Removing any rows with missing values in ",
-      paste(keep_cols, collapse = ", ")
-    ))
-    data <- tidyr::drop_na(data)
+  # step 3: optional confounders
+  if (has_confounders) {
+    confounders_missing <- setdiff(
+      confounders,
+      c(names(mcmc_data), names(covariate_data))
+    )
+    if (length(confounders_missing) > 0) {
+      rlang::abort(
+        message = paste0(
+          "Confounder(s) ", paste(confounders_missing, collapse = ", "),
+          " not found in either 'mcmc_data' or 'covariate_data'."
+        )
+      )
+    }
+    confounders_in_mcmc <- intersect(confounders, names(mcmc_data))
+    confounders_in_cov <- setdiff(confounders, confounders_in_mcmc)
+    if (length(confounders_in_mcmc) > 0) {
+      validate_column_inputs(
+        col_names = c(".draw", subject_id, confounders_in_mcmc),
+        data_frame = mcmc_data,
+        data_name = "mcmc_data"
+      )
+      confounders_mcmc_data_clean <- mcmc_data %>%
+        dplyr::select(
+          dplyr::all_of(c(".draw", subject_id, confounders_in_mcmc))
+        )
+      result <- dplyr::left_join(
+        x = result,
+        y = confounders_mcmc_data_clean,
+        by = c(".draw", subject_id)
+      )
+    }
+    if (length(confounders_in_cov) > 0) {
+      validate_column_inputs(
+        col_names = c(subject_id, confounders_in_cov),
+        data_frame = covariate_data,
+        data_name = "covariate_data"
+      )
+      confounders_covariate_data_clean <- covariate_data %>%
+        dplyr::select(
+          dplyr::all_of(c(subject_id, confounders_in_cov))
+        )
+      result <- dplyr::left_join(
+        x = result,
+        y = confounders_covariate_data_clean,
+        by = subject_id
+      )
+    }
   }
 
-  data <- data %>%
-    dplyr::arrange(.data[[".draw"]]) %>%
+  if (anyNA(result)) {
+    n_removed <- sum(!stats::complete.cases(result))
+    rlang::warn(
+      message = paste0(
+        "Removing ", n_removed, " row(s) with missing values after joining."
+      )
+    )
+    result <- tidyr::drop_na(result)
+  }
+
+  result <- result %>%
+    dplyr::arrange(
+      .data[[".draw"]]
+    ) %>%
     draw_rows(
       n_draws = n_draws,
       rng_seed = rng_seed
     )
 
-  return(data)
+  return(result)
 
 }
 
@@ -1025,11 +1091,25 @@ prep_emc_data <- function(
     pkg = "EMC2",
     reason = "'EMC2' must be installed if input `mcmc_data` is of class 'emc'."
   )
-
   mcmc_data <- EMC2::parameters(mcmc_data, selection = "alpha")
 
   validate_column_inputs(
-    col_names = c("subjects", column_names[["parameter"]]),
+    col_names = column_names[c("draw_id", "subject_id", "parameter")]
+  )
+  columns_to_keep <- as.character(column_names[c("subject_id", "parameter")])
+
+  has_confounders <- !is.null(column_names[["confounders"]])
+  if (has_confounders) {
+    validate_column_inputs(col_names = column_names[["confounders"]])
+    confounders <- column_names[["confounders"]]
+    confounders_in_mcmc <- intersect(confounders, names(mcmc_data))
+    if (length(confounders_in_mcmc) > 0) {
+      columns_to_keep <- c(columns_to_keep, confounders_in_mcmc)
+    }
+  }
+
+  validate_column_inputs(
+    col_names = columns_to_keep,
     data_frame = mcmc_data,
     data_name = "mcmc_data"
   )
@@ -1037,6 +1117,9 @@ prep_emc_data <- function(
   n_draws <- nrow(mcmc_data) / dplyr::n_distinct(mcmc_data[["subjects"]])
 
   mcmc_data <- mcmc_data %>%
+    dplyr::select(
+      dplyr::all_of(columns_to_keep)
+    ) %>%
     dplyr::group_by(
       .data[["subjects"]]
     ) %>%

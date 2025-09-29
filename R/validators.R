@@ -74,7 +74,7 @@ validate_column_inputs <- function(
     if (is.null(data_name)) {
       data_name <- rlang::as_label(rlang::enquo(data_frame))
     }
-    col_names_vec <- unname(unlist(col_names))
+    col_names_vec <- as.character(col_names)
     checkmate::assert_data_frame(
       x = data_frame,
       min.rows = 1,
