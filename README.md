@@ -36,11 +36,12 @@ speeded decision-making and response inhibition; `TreeBUGS` focuses on
 multinomial processing tree models and requires the JAGS MCMC library.
 
 In contrast, `plausiblecor` offers a more **modular and model-agnostic
-approach**, supporting multiple correlation types and alternative
-hypotheses. It works directly with arbitrary data frames of MCMC samples
+approach**. It works directly with arbitrary data frames of MCMC samples
 and covariates, providing a compact, self-contained workflow for
 post-hoc correlation analysis with flexible tools for summarisation and
-visualisation.
+visualisation. Multiple correlation types (Pearson’s *r* or Kendall’s
+*tau*) and alternative hypotheses (two-sided, strictly non-negative or
+non-positive) are supported.
 
 ## Installation
 
