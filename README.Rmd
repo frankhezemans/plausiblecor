@@ -50,12 +50,10 @@ library(plausiblecor)
 
 # correlation between latent parameter and fMRI signal in the striatum
 caution_striatum_cor <- run_plausible_cor(
-  mcmc_data = Forstmann_LBA,
-  covariate_data = Forstmann_fMRI,
-  draw_id = ".draw",
-  subject_id = "subjects",
   parameter = "caution_effect_speed",
-  covariate = "striatum"
+  covariate = "striatum",
+  mcmc_data = Forstmann_LBA,
+  covariate_data = Forstmann_fMRI
 )
 
 # summarise the result at both the sample and population level

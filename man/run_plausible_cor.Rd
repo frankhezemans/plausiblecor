@@ -5,12 +5,12 @@
 \title{Calculate plausible correlation values between model parameter and covariate}
 \usage{
 run_plausible_cor(
-  mcmc_data,
-  covariate_data = NULL,
-  draw_id,
-  subject_id,
   parameter,
   covariate,
+  mcmc_data,
+  covariate_data = NULL,
+  draw_id = NULL,
+  subject_id = NULL,
   confounders = NULL,
   alternative = c("two.sided", "greater", "less"),
   method = c("pearson", "kendall"),
@@ -20,13 +20,20 @@ run_plausible_cor(
 )
 }
 \arguments{
+\item{parameter}{String denoting the column with the estimated model
+parameter in \code{mcmc_data}.}
+
+\item{covariate}{String denoting the column with the observed covariate of
+interest, either in \code{mcmc_data} or the optional \code{covariate_data}.}
+
 \item{mcmc_data}{Data frame of MCMC samples in long format, where each row
 represents a unique combination of MCMC draw, subject, and
-parameter value.
+parameters.
 Alternatively, an object of class \code{"emc"} can be provided, which
 corresponds to a model fit using the \code{EMC2} package (\code{\link[EMC2:EMC2-package]{EMC2::EMC2()}}).
 In this case, the S3 generic \code{\link[EMC2:parameters]{EMC2::parameters()}} is used to extract
-subject-wise MCMC samples of the model parameters.}
+subject-wise MCMC samples of the model parameters, and columns for
+MCMC sample IDs and subject IDs are manually added.}
 
 \item{covariate_data}{Optional data frame containing covariate data (if not
 already in \code{mcmc_data}). Should contain one row per participant.}
@@ -34,21 +41,17 @@ already in \code{mcmc_data}). Should contain one row per participant.}
 \item{draw_id}{String denoting the column with MCMC sample IDs in \code{mcmc_data}.
 For consistency across subsequent plotting and summarising functions,
 this column is renamed to \code{".draw"} in the returned data frame.
-If \code{mcmc_data} is an object of class \code{"emc"}, this argument is used to
-create an MCMC sample ID column, since the output of
+If \code{NULL} (default), this column is assumed to be named \code{".draw"}.
+If \code{mcmc_data} is an object of class \code{"emc"}, an MCMC sample ID column
+named \code{".draw"} is manually added, since the output of
 \code{\link[EMC2:parameters]{EMC2::parameters()}} does not include such a column by default.}
 
 \item{subject_id}{String denoting the column with subject IDs. If both
 \code{mcmc_data} and \code{covariate_data} are provided, this column name should
 be consistent across data frames.
-If \code{mcmc_data} is an object of class \code{"emc"}, \code{subject_id} must be
-equal to \code{"subjects"}.}
-
-\item{parameter}{String denoting the column with the estimated model
-parameter.}
-
-\item{covariate}{String denoting the column with the observed covariate of
-interest.}
+If \code{NULL} (default), this column is assumed to be named \code{"subjects"}.
+If \code{mcmc_data} is an object of class \code{"emc"}, \code{subject_id} is forced
+to be equal to \code{"subjects"}.}
 
 \item{confounders}{Optional character vector denoting the column(s) in
 \code{mcmc_data} and/or \code{covariate_data} that are confounding or
