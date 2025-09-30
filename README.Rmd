@@ -27,9 +27,9 @@ The package includes functions for calculating, summarising, visualising, and co
 
 ## Statement of need
 
-To the best of our knowledge, this methodology has so far only been (partially) implemented in two open-source tools: the Dynamic Models of Choice ([`DMC`](https://osf.io/pbwx8/)) toolbox (Heathcote et al., 2019), and the [`TreeBUGS`](https://github.com/danheck/TreeBUGS) R package (Heck et al., 2018). Both of these implementations are tied to specific modelling frameworks and software: `DMC` focuses on models of speeded decision-making and response inhibition; `TreeBUGS` focuses on multinomial processing tree models and requires the JAGS MCMC library.
+To the best of our knowledge, this methodology has so far only been (partially) implemented in two open-source tools: the Dynamic Models of Choice ([`DMC`](https://osf.io/pbwx8/)) toolbox (Heathcote et al., 2019), and the [`TreeBUGS`](https://github.com/danheck/TreeBUGS) R package (Heck et al., 2018). In both cases, plausible values correlation analysis was included only as an ancillary feature, tied to specific modelling frameworks and software: `DMC` focuses on models of speeded decision-making and response inhibition; `TreeBUGS` focuses on multinomial processing tree models and requires the JAGS MCMC library.
 
-In contrast, `plausiblecor` offers a more **modular and model-agnostic approach**. It works directly with arbitrary data frames of MCMC samples and covariates, providing a compact, self-contained workflow for post-hoc correlation analysis with flexible tools for summarisation and visualisation. Multiple correlation types (Pearson's *r* or Kendall's *tau*) and alternative hypotheses (two-sided, strictly non-negative or non-positive) are supported.
+In contrast, `plausiblecor` offers a more **modular and model-agnostic approach**. It works directly with arbitrary data frames of MCMC samples and covariates, providing a compact, self-contained workflow for plausible values correlation analysis with flexible tools for summarisation and visualisation. Multiple correlation types (Pearson's *r* or Kendall's *tau*) and alternative hypotheses (two-sided, strictly non-negative or non-positive) are supported.
 
 ## Installation
 
