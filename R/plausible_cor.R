@@ -617,7 +617,7 @@ compare_plausible_cors <- function(
 #' @return A data frame where each row corresponds to one density value for a
 #'         given posterior density function.
 #'
-#' @noRd
+#' @keywords internal
 get_posterior_cor_densities <- function(.data, grid_spacing = 1e-3) {
 
   validate_column_inputs(
@@ -685,7 +685,7 @@ get_posterior_cor_densities <- function(.data, grid_spacing = 1e-3) {
 #' @return A tibble with columns `x` (grid points) and `density`
 #'         (mean posterior density).
 #'
-#' @noRd
+#' @keywords internal
 get_mean_posterior_cor <- function(.data, dx = NULL) {
 
   validate_column_inputs(
@@ -743,7 +743,7 @@ get_mean_posterior_cor <- function(.data, dx = NULL) {
 #' in the quantiles drawn for each posterior distribution, while retaining
 #' reproducibility.
 #'
-#' @noRd
+#' @keywords internal
 get_sampled_quantiles <- function(
     .data,
     n_samples = 1,
@@ -843,7 +843,7 @@ get_sampled_quantiles <- function(
 #'
 #' @return A [tibble::tibble] summarizing the posterior samples.
 #'
-#' @noRd
+#' @keywords internal
 summarise_samples <- function(
     .data,
     ...,

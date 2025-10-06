@@ -73,10 +73,10 @@
 #' \eqn{\alpha = \beta = \frac{1}{\kappa}}, scaled to the interval (-1, 1). This
 #' creates a symmetric distribution centered at zero and its domain stretched to
 #' cover the full range of the correlation coefficient. The prior can optionally
-#' also be truncated (and renormalised) to support a directional
+#' also be truncated (and re-normalised) to support a directional
 #' (i.e., non-negative or non-positive) alternative hypothesis.
 #'
-#' This function was primarily adapted from code that was originally written by
+#' This function was primarily based on code that was originally written by
 #' Alexander Ly, adapted by Dora Matzke, and then released with the Dynamic
 #' Models of Choice toolbox (Heathcote et al., 2019). Furthermore, code for
 #' Kendall's rank correlation was adapted from code written by Alexander Ly and
@@ -141,11 +141,7 @@ posterior_cor_updf <- function(
     check_kendall_normal_approx(r, n)
     d <- posterior_tau(r, n, cor_grid, kappa, alternative)
   } else {
-    if (abs(r) < sqrt(.Machine$double.eps)) {
-      d <- posterior_rho_jeffreys(r, n, cor_grid, kappa, alternative, max_iter)
-    } else {
-      d <- posterior_rho_exact(r, n, cor_grid, kappa, alternative, max_iter)
-    }
+    d <- posterior_rho(r, n, cor_grid, kappa, alternative, max_iter)
   }
 
   if (any(!is.finite(d))) {
@@ -196,13 +192,14 @@ posterior_cor_updf <- function(
 
 # PEARSON ---------------------------------------------------------------------
 
-#' Exact posterior density for Pearson's correlation
+#' Posterior density for Pearson's correlation
 #'
 #' @description
-#' Computes the analytically normalized posterior density of the population
-#' correlation coefficient \eqn{\rho}. The function combines the exact sampling
+#' Computes the normalised posterior density of the population correlation
+#' coefficient \eqn{\rho}. The function combines the exact sampling
 #' distribution of the sample correlation, the stretched beta prior on \eqn{\rho},
-#' and a closed-form normalizing constant.
+#' and a closed-form normalizing constant. If the sample correlation is
+#' (practically) equal to zero, Jeffrey's approximation is used.
 #'
 #' @param r Numeric value. The observed sample correlation coefficient.
 #' @param n Numeric value. The sample size.
@@ -213,6 +210,16 @@ posterior_cor_updf <- function(
 #'        generalised hypergeometric functions.
 #'
 #' @return Numeric vector of posterior density values.
+#' @keywords internal
+posterior_rho <- function(r, n, cor_grid, kappa, alternative, max_iter) {
+  if (abs(r) < sqrt(.Machine$double.eps)) {
+    result <- posterior_rho_jeffreys(r, n, cor_grid, kappa, alternative, max_iter)
+  } else {
+    result <- posterior_rho_exact(r, n, cor_grid, kappa, alternative, max_iter)
+  }
+  return(result)
+}
+
 #' @noRd
 posterior_rho_exact <- function(r, n, cor_grid, kappa, alternative, max_iter) {
   result <- bf_rho_exact(r, n, kappa, max_iter) *
@@ -221,22 +228,6 @@ posterior_rho_exact <- function(r, n, cor_grid, kappa, alternative, max_iter) {
   return(result)
 }
 
-#' Jeffreys approximation to the posterior density for Pearson's correlation
-#'
-#' @description
-#' Computes the normalized posterior density of the population correlation
-#' coefficient \eqn{\rho} using Jeffreys' approximation. This is particularly
-#' accurate when the observed correlation coefficient is close to zero.
-#'
-#' @param r Numeric value. The observed sample correlation coefficient.
-#' @param n Numeric value. The sample size.
-#' @param cor_grid Numeric vector. Grid of correlation values to evaluate.
-#' @param kappa Numeric value. Prior concentration parameter.
-#' @param alternative Character string specifying the alternative hypothesis.
-#' @param max_iter Integer. Maximum number of iterations (attempts) to solve
-#'        generalised hypergeometric functions.
-#'
-#' @return Numeric vector of posterior density values.
 #' @noRd
 posterior_rho_jeffreys <- function(r, n, cor_grid, kappa, alternative, max_iter) {
   result <- bf_rho_jeffreys(r, n, kappa, max_iter) *
@@ -245,13 +236,17 @@ posterior_rho_jeffreys <- function(r, n, cor_grid, kappa, alternative, max_iter)
   return(result)
 }
 
-#' Normalizing constant for the exact posterior density
+#' @name bf_rho_exact
+#' @title Normalizing constant for the exact posterior density of Pearson's
+#' correlation
 #'
 #' @description
 #' Computes the analytic normalising constant for the posterior density of the
 #' correlation coefficient. This expression coincides with the Bayes factor
 #' reported by Ly et al. (2018), because the marginal likelihood under the null
-#' hypothesis equals one.
+#' hypothesis equals one. Instead of the exact solution, Jeffrey's approximation
+#' can be used, which is accurate when the sample correlation is (practically)
+#' equal to zero.
 #'
 #' @param r Numeric value. The observed sample correlation coefficient.
 #' @param n Numeric value. The sample size.
@@ -260,7 +255,7 @@ posterior_rho_jeffreys <- function(r, n, cor_grid, kappa, alternative, max_iter)
 #'        generalised hypergeometric functions.
 #'
 #' @return Numeric scalar giving the normalising constant.
-#' @noRd
+#' @keywords internal
 bf_rho_exact <- function(r, n, kappa, max_iter) {
 
   hyper_term <- hypergeo::genhypergeo(
@@ -283,22 +278,8 @@ bf_rho_exact <- function(r, n, kappa, max_iter) {
 
 }
 
-#' Normalizing constant (Jeffreys approximation)
-#'
-#' @description
-#' Computes the approximate normalising constant for the posterior density of
-#' the correlation coefficient under Jeffreys' approximation. As in the exact
-#' case, this expression corresponds to the Bayes factor when the null model has
-#' unit marginal likelihood.
-#'
-#' @param r Numeric value. The observed sample correlation coefficient.
-#' @param n Numeric value. The sample size.
-#' @param kappa Numeric value. Prior concentration parameter.
-#' @param max_iter Integer. Maximum number of iterations (attempts) to solve
-#'        generalised hypergeometric functions.
-#'
-#' @return Numeric scalar giving the normalising constant.
-#' @noRd
+#' @rdname bf_rho_exact
+#' @keywords internal
 bf_rho_jeffreys <- function(r, n, kappa, max_iter) {
 
   hyper_term <- hypergeo::genhypergeo(
@@ -321,12 +302,15 @@ bf_rho_jeffreys <- function(r, n, kappa, max_iter) {
 
 }
 
-#' Exact likelihood of the sample correlation
+#' @name likelihood_rho_exact
+#' @title Likelihood of the sample Pearson's correlation
 #'
 #' @description
 #' Evaluates the exact sampling distribution of the sample correlation
 #' coefficient \eqn{r} given the population correlation \eqn{\rho}.
-#' This is expressed in terms of generalized hypergeometric functions.
+#' This is expressed in terms of generalized hypergeometric functions. Instead
+#' of the exact solution, Jeffrey's approximation can be used, which is accurate
+#' when the sample correlation is (practically) equal to zero.
 #'
 #' @param r Numeric value. The observed sample correlation coefficient.
 #' @param n Numeric value. The sample size.
@@ -335,7 +319,7 @@ bf_rho_jeffreys <- function(r, n, kappa, max_iter) {
 #'        generalised hypergeometric functions.
 #'
 #' @return Numeric vector of likelihood values.
-#' @noRd
+#' @keywords internal
 likelihood_rho_exact <- function(r, n, cor_grid, max_iter) {
 
   hyper_term_even <- hypergeo::genhypergeo(
@@ -369,19 +353,8 @@ likelihood_rho_exact <- function(r, n, cor_grid, max_iter) {
 
 }
 
-#' Jeffreys approximation to the likelihood of the sample correlation
-#'
-#' @description
-#' Approximates the sampling distribution of the sample correlation
-#' coefficient \eqn{r} given the population correlation \eqn{\rho}, using
-#' Jeffreys' closed-form expression.
-#'
-#' @param r Numeric value. The observed sample correlation coefficient.
-#' @param n Numeric value. The sample size.
-#' @param cor_grid Numeric vector. Grid of correlation values to evaluate.
-#'
-#' @return Numeric vector of likelihood values.
-#' @noRd
+#' @rdname likelihood_rho_exact
+#' @keywords internal
 likelihood_rho_jeffreys <- function(r, n, cor_grid) {
   numerator <- (1 - cor_grid^2)^((n - 1) / 2)
   denominator <- (1 - cor_grid * r)^(n - 1 - (1 / 2))
@@ -406,7 +379,7 @@ likelihood_rho_jeffreys <- function(r, n, cor_grid) {
 #' @param kappa Concentration parameter of the prior distribution.
 #' @param alternative Character string specifying the alternative hypothesis.
 #' @return Numeric vector of posterior density values over `cor_grid`.
-#' @noRd
+#' @keywords internal
 posterior_tau <- function(r, n, cor_grid, kappa, alternative) {
   density <- posterior_tau_integrand(r, n, cor_grid, kappa, alternative)
   dx <- diff(cor_grid)
@@ -441,7 +414,7 @@ posterior_tau_integrand <- function(r, n, cor_grid, kappa, alternative) {
 #' @param cor_grid Numeric vector of candidate population tau values.
 #' @param log_d Logical; if TRUE, return log-likelihood values.
 #' @return Numeric vector of (log-)likelihood values.
-#' @noRd
+#' @keywords internal
 likelihood_tau <- function(r, n, cor_grid, log_d = FALSE) {
   t_star <- standardise_tau(r, n)
   mu_vec <- (3 / 2) * cor_grid * sqrt(n)
@@ -491,7 +464,7 @@ standardise_tau <- function(r, n) {
 #' @return Invisibly returns `NULL`. Called for its side effect of issuing a
 #' warning if the (r, n) combination falls below the recommended thresholds.
 #'
-#' @noRd
+#' @keywords internal
 check_kendall_normal_approx <- function(r, n) {
   tau_abs <- abs(r)
   min_n <- dplyr::case_when(
@@ -527,7 +500,7 @@ check_kendall_normal_approx <- function(r, n) {
 #' @param alternative Character string specifying the alternative hypothesis.
 #'
 #' @return Numeric vector of prior density values.
-#' @noRd
+#' @keywords internal
 prior_cor <- function(cor_grid, kappa, alternative, method) {
   if (method == "kendall") {
     beta_term <- (2^(-2 / kappa)) / beta(a = 1 / kappa, b = 1 / kappa)
@@ -587,7 +560,7 @@ truncate_prior_density <- function(cor_grid, base_density, alternative) {
 #'   sorted in ascending order. The actual number of returned points may
 #'   be slightly less than `n_bins` due to de-duplication.
 #'
-#' @noRd
+#' @keywords internal
 create_cor_grid <- function(r, n, n_bins) {
 
   n_bins <- max(n_bins, 100)

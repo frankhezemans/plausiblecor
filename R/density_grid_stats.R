@@ -18,7 +18,7 @@
 #'
 #' @return A numeric value corresponding to the requested point estimate.
 #'
-#' @noRd
+#' @keywords internal
 get_point_estimate <- function(
     val,
     dens,
@@ -79,7 +79,7 @@ get_point_estimate <- function(
 #' @return A data frame with columns `"lower"`, `"upper"`, and `"width"` for
 #'         each requested interval.
 #'
-#' @noRd
+#' @keywords internal
 get_interval <- function(
     val,
     dens,

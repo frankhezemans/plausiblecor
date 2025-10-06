@@ -95,10 +95,10 @@ The prior is a stretched beta distribution with shape parameters
 \eqn{\alpha = \beta = \frac{1}{\kappa}}, scaled to the interval (-1, 1). This
 creates a symmetric distribution centered at zero and its domain stretched to
 cover the full range of the correlation coefficient. The prior can optionally
-also be truncated (and renormalised) to support a directional
+also be truncated (and re-normalised) to support a directional
 (i.e., non-negative or non-positive) alternative hypothesis.
 
-This function was primarily adapted from code that was originally written by
+This function was primarily based on code that was originally written by
 Alexander Ly, adapted by Dora Matzke, and then released with the Dynamic
 Models of Choice toolbox (Heathcote et al., 2019). Furthermore, code for
 Kendall's rank correlation was adapted from code written by Alexander Ly and
