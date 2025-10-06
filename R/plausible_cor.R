@@ -192,6 +192,9 @@ run_plausible_cor <- function(
 
   class(result) <- c("plausible_cor", class(result))
 
+  attr(result, "alternative") <- posterior_args[["alternative"]]
+  attr(result, "method") <- posterior_args[["method"]]
+
   return(result)
 
 }
@@ -333,7 +336,7 @@ compute_cor <- function(
 #'   \item{mean / median}{Point estimate of the correlation coefficient.}
 #'   \item{lower / upper}{Credible interval bounds for each `interval_width`.}
 #'   \item{width}{If the length of `interval_width` is greater than 1: The width of the credible interval.}
-#'   \item{p_dir}{Directional probability (proportion of mass > 0 or < 0, whichever is greater).}
+#'   \item{p_dir}{Directional probability (proportion of mass > 0 or < 0, whichever is greater). Only applicable if [run_plausible_cor()] was called with `alternative = "two.sided"`.}
 #'   \item{p_rope}{If specified: The proportion contained within the ROPE.}
 #'
 #' @references
@@ -422,6 +425,11 @@ summarise_plausible_cor <- function(
   if (length(point_interval_args[["interval_width"]]) == 1) {
     result <- result %>%
       dplyr::select(-dplyr::all_of("width"))
+  }
+
+  alternative <- attr(.data, "alternative", exact = TRUE)
+  if (alternative != "two.sided") {
+    result[["p_dir"]] <- NA_real_
   }
 
   return(result)

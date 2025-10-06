@@ -57,7 +57,7 @@ caution_striatum_cor <- run_plausible_cor(
 )
 
 # summarise the result at both the sample and population level
-summary(caution_striatum_cor)
+summary(caution_striatum_cor, rope_range = c(-0.1, 0.1))
 
 # illustrate the posterior distribution at the population level
 plot(caution_striatum_cor)

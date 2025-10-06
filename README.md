@@ -74,12 +74,18 @@ caution_striatum_cor <- run_plausible_cor(
 )
 
 # summarise the result at both the sample and population level
-summary(caution_striatum_cor)
-#> # A tibble: 2 × 5
-#>   type         mean  lower  upper p_dir
-#>   <fct>       <dbl>  <dbl>  <dbl> <dbl>
-#> 1 sample     -0.326 -0.510 -0.136 0.999
-#> 2 population -0.277 -0.683  0.155 0.887
+summary(caution_striatum_cor, rope_range = c(-0.1, 0.1))
+#> <summary.plausible_cor object>
+#>  Method: pearson
+#>  Alternative hypothesis: two.sided
+#>  ROPE: [-0.1, 0.1]
+#> 
+#> Summary of plausible correlation estimates:
+#> # A tibble: 2 × 6
+#>   type         mean  lower  upper p_dir p_rope
+#>   <fct>       <dbl>  <dbl>  <dbl> <dbl>  <dbl>
+#> 1 sample     -0.326 -0.510 -0.136 0.999 0.0107
+#> 2 population -0.277 -0.683  0.155 0.887 0.157
 
 # illustrate the posterior distribution at the population level
 plot(caution_striatum_cor)

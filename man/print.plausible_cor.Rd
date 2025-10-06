@@ -9,7 +9,7 @@
 \arguments{
 \item{x}{An object of class "plausible_cor" (output from \code{\link[=run_plausible_cor]{run_plausible_cor()}}).}
 
-\item{...}{Additional arguments (currently unused).}
+\item{...}{Optional additional arguments, passed to tibble's print method.}
 }
 \description{
 Print method for plausible correlation objects

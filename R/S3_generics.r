@@ -1,26 +1,54 @@
 #' Print method for plausible correlation objects
 #'
 #' @param x An object of class "plausible_cor" (output from [run_plausible_cor()]).
-#' @param ... Additional arguments (currently unused).
+#' @param ... Optional additional arguments, passed to tibble's print method.
 #'
+#' @importFrom utils head
 #' @export
 #' @method print plausible_cor
 print.plausible_cor <- function(x, ...) {
-
   n_draws <- dplyr::n_distinct(x[[".draw"]])
-  n_valid <- nrow(x)
+  method <- attr(x, "method", exact = TRUE)
+  alternative <- attr(x, "alternative", exact = TRUE)
+  # Check posterior_updf validity (cheap probe)
+  if ("posterior_updf" %in% names(x)) {
+    n_valid <- sum(
+      purrr::map_lgl(
+        .x = x[["posterior_updf"]],
+        .f = function(updf) {
+          out <- tryCatch(
+            updf(0),
+            error = function(e) {NA_real_}
+          )
+          result <- is.finite(out) && !is.na(out)
+          return(result)
+        }
+      )
+    )
+  } else {
+    n_valid <- nrow(x)
+  }
 
   cat("<plausible_cor object>\n")
-  cat(" Number of posterior draws: ", n_draws, "\n", sep = "")
-  cat(" Valid correlations: ", n_valid, "\n", sep = "")
+  cat(" Method: ", method, "\n", sep = "")
+  cat(" Alternative hypothesis: ", alternative, "\n", sep = "")
+  cat(" Number of MCMC samples: ", n_draws, "\n", sep = "")
+  cat(" Number of valid posterior density functions: ", n_valid, "\n", sep = "")
 
   if ("r" %in% names(x)) {
     r_preview <- utils::head(x[["r"]], n = 5)
-    cat(" Example r values: ", paste0(round(r_preview, digits = 3), collapse = ", "))
-    if (n_valid > 5) cat(", ...")
-    cat("\n")
+    cat(
+      " Example r values: ",
+      paste0(round(r_preview, digits = 3), collapse = ", ")
+    )
+    if (nrow(x) > 5) {
+      cat(", ...")
+    }
+    cat("\n\n")
   }
 
+  # delegate further input arguments to tibble's print method
+  NextMethod("print", x, ...)
   invisible(x)
 }
 
@@ -50,7 +78,36 @@ summary.plausible_cor <- function(
     rope_range = rope_range
   )
   class(result) <- c("summary.plausible_cor", class(result))
+  attr(result, "method") <- attr(object, "method", exact = TRUE)
+  attr(result, "alternative") <- attr(object, "alternative", exact = TRUE)
+  attr(result, "rope_range") <- rope_range
   return(result)
+}
+
+#' Print method for summary.plausible_cor objects
+#'
+#' @param x An object of class "summary.plausible_cor".
+#' @param ... Optional additional arguments, passed to tibble's print method.
+#'
+#' @export
+#' @method print summary.plausible_cor
+print.summary.plausible_cor <- function(x, ...) {
+  method <- attr(x, "method", exact = TRUE)
+  alternative <- attr(x, "alternative", exact = TRUE)
+  rope <- attr(x, "rope_range", exact = TRUE)
+
+  cat("<summary.plausible_cor object>\n")
+  cat(" Method: ", method, "\n", sep = "")
+  cat(" Alternative hypothesis: ", alternative, "\n", sep = "")
+
+  if (!is.null(rope)) {
+    cat(" ROPE: [", paste0(rope, collapse = ", "), "]\n", sep = "")
+  }
+
+  cat("\nSummary of plausible correlation estimates:\n")
+  # delegate to tibble's print method
+  NextMethod("print", x, ...)
+  invisible(x)
 }
 
 
