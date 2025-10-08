@@ -107,12 +107,12 @@ posterior_cor_updf <- function(
     max_iter = 1e7
 ) {
 
+  method <- rlang::arg_match(method)
+  alternative <- rlang::arg_match(alternative)
   kappa <- kappa %||% ifelse(
     test = method == "pearson",
     yes = 1, no = 2
   )
-  alternative <- rlang::arg_match(alternative)
-  method <- rlang::arg_match(method)
 
   params <- validate_posterior_cor_updf_input(r, n, kappa, n_bins, max_iter)
   r <- params[["r"]]
