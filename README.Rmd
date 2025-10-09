@@ -41,7 +41,7 @@ remotes::install_github("frankhezemans/plausiblecor")
 
 ## Getting started
 
-`plausiblecor` ships with example data from Forstmann et al. (2008), who tested the effect of a speed/accuracy manipulation on speeded decision-making.
+`plausiblecor` ships with example MCMC samples and covariates based on data from Forstmann et al. (2008), who tested the effect of a speed/accuracy manipulation on speeded decision-making in conjunction with functional neuroimaging (fMRI).
 
 The following illustrates how to analyse the correlation between a latent parameter (estimated change in response caution) and an observed covariate (fMRI BOLD signal change in the caudate nucleus):
 

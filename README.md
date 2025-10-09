@@ -54,9 +54,10 @@ remotes::install_github("frankhezemans/plausiblecor")
 
 ## Getting started
 
-`plausiblecor` ships with example data from Forstmann et al. (2008), who
-tested the effect of a speed/accuracy manipulation on speeded
-decision-making.
+`plausiblecor` ships with example MCMC samples and covariates based on
+data from Forstmann et al. (2008), who tested the effect of a
+speed/accuracy manipulation on speeded decision-making in conjunction
+with functional neuroimaging (fMRI).
 
 The following illustrates how to analyse the correlation between a
 latent parameter (estimated change in response caution) and an observed
@@ -76,6 +77,8 @@ caution_striatum_cor <- run_plausible_cor(
 # summarise the result at both the sample and population level
 summary(caution_striatum_cor, rope_range = c(-0.1, 0.1))
 #> <summary.plausible_cor object>
+#>  Parameter: caution_effect_speed
+#>  Covariate: striatum
 #>  Method: pearson
 #>  Alternative hypothesis: two.sided
 #>  ROPE: [-0.1, 0.1]
