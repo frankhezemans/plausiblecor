@@ -7,9 +7,6 @@
 #' @export
 #' @method print plausible_cor
 print.plausible_cor <- function(x, ...) {
-  n_draws <- dplyr::n_distinct(x[[".draw"]])
-  method <- attr(x, "method", exact = TRUE)
-  alternative <- attr(x, "alternative", exact = TRUE)
   # Check posterior_updf validity (cheap probe)
   if ("posterior_updf" %in% names(x)) {
     n_valid <- sum(
@@ -30,9 +27,18 @@ print.plausible_cor <- function(x, ...) {
   }
 
   cat("<plausible_cor object>\n")
-  cat(" Method: ", method, "\n", sep = "")
-  cat(" Alternative hypothesis: ", alternative, "\n", sep = "")
-  cat(" Number of MCMC samples: ", n_draws, "\n", sep = "")
+  cat(" Parameter: ", attr(x, "parameter", exact = TRUE), "\n", sep = "")
+  cat(" Covariate: ", attr(x, "covariate", exact = TRUE), "\n", sep = "")
+  if (!is.null(attr(x, "confounders", exact = TRUE))) {
+    cat(
+      " Confounders: ",
+      paste(attr(x, "confounders", exact = TRUE), collapse = ", "),
+      "\n", sep = ""
+    )
+  }
+  cat(" Method: ", attr(x, "method", exact = TRUE), "\n", sep = "")
+  cat(" Alternative hypothesis: ", attr(x, "alternative", exact = TRUE), "\n", sep = "")
+  cat(" Number of MCMC samples: ", dplyr::n_distinct(x[[".draw"]]), "\n", sep = "")
   cat(" Number of valid posterior density functions: ", n_valid, "\n", sep = "")
 
   if ("r" %in% names(x)) {
@@ -78,6 +84,9 @@ summary.plausible_cor <- function(
     rope_range = rope_range
   )
   class(result) <- c("summary.plausible_cor", class(result))
+  attr(result, "parameter") <- attr(object, "parameter", exact = TRUE)
+  attr(result, "covariate") <- attr(object, "covariate", exact = TRUE)
+  attr(result, "confounders") <- attr(object, "confounders", exact = TRUE)
   attr(result, "method") <- attr(object, "method", exact = TRUE)
   attr(result, "alternative") <- attr(object, "alternative", exact = TRUE)
   attr(result, "rope_range") <- rope_range
@@ -92,18 +101,25 @@ summary.plausible_cor <- function(
 #' @export
 #' @method print summary.plausible_cor
 print.summary.plausible_cor <- function(x, ...) {
-  method <- attr(x, "method", exact = TRUE)
-  alternative <- attr(x, "alternative", exact = TRUE)
-  rope <- attr(x, "rope_range", exact = TRUE)
-
   cat("<summary.plausible_cor object>\n")
-  cat(" Method: ", method, "\n", sep = "")
-  cat(" Alternative hypothesis: ", alternative, "\n", sep = "")
-
-  if (!is.null(rope)) {
-    cat(" ROPE: [", paste0(rope, collapse = ", "), "]\n", sep = "")
+  cat(" Parameter: ", attr(x, "parameter", exact = TRUE), "\n", sep = "")
+  cat(" Covariate: ", attr(x, "covariate", exact = TRUE), "\n", sep = "")
+  if (!is.null(attr(x, "confounders", exact = TRUE))) {
+    cat(
+      " Confounders: ",
+      paste(attr(x, "confounders", exact = TRUE), collapse = ", "),
+      "\n", sep = ""
+    )
   }
-
+  cat(" Method: ", attr(x, "method", exact = TRUE), "\n", sep = "")
+  cat(" Alternative hypothesis: ", attr(x, "alternative", exact = TRUE), "\n", sep = "")
+  if (!is.null(attr(x, "rope_range", exact = TRUE))) {
+    cat(
+      " ROPE: [",
+      paste0(attr(x, "rope_range", exact = TRUE), collapse = ", "),
+      "]\n", sep = ""
+    )
+  }
   cat("\nSummary of plausible correlation estimates:\n")
   # delegate to tibble's print method
   NextMethod("print", x, ...)
@@ -129,7 +145,6 @@ plot.plausible_cor <- function(
     type = c("population", "sample"),
     ...
 ) {
-
   type <- match.arg(type)
   result <- switch(
     type,
@@ -146,6 +161,5 @@ plot.plausible_cor <- function(
       )
     }
   )
-
   return(result)
 }
