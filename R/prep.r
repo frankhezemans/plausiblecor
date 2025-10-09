@@ -78,7 +78,9 @@ prep_plausible_cor_data <- function(
     ) %>%
     draw_rows(
       n_draws = n_draws,
-      rng_seed = rng_seed
+      rng_seed = rng_seed,
+      draw_id = ".draw",
+      subject_id = column_names[["subject_id"]]
     )
 
   return(result)
@@ -289,7 +291,9 @@ get_confounder_data <- function(
 
 
 #' @noRd
-draw_rows <- function(.data, n_draws, rng_seed) {
+draw_rows <- function(
+    .data, n_draws, rng_seed, draw_id = NULL, subject_id = NULL
+) {
   if (is.null(n_draws) || !is.finite(n_draws)) {
     return(.data)
   }
@@ -307,19 +311,46 @@ draw_rows <- function(.data, n_draws, rng_seed) {
       len = 1,
       coerce = TRUE
     )
-    result <- withr::with_seed(
-      seed = rng_seed,
-      code = .data %>%
+  }
+  if (is.null(draw_id) || is.null(subject_id)) {
+    if (!is.null(rng_seed)) {
+      result <- withr::with_seed(
+        seed = rng_seed,
+        code = .data %>%
+          dplyr::slice_sample(
+            n = n_draws,
+            replace = FALSE
+          )
+      )
+    } else {
+      result <- .data %>%
         dplyr::slice_sample(
           n = n_draws,
           replace = FALSE
         )
-    )
+    }
   } else {
+    unique_draw_id <- unique(.data[[draw_id]])
+    if (n_draws >= length(unique_draw_id)) {
+      return(.data)
+    }
+    if (!is.null(rng_seed)) {
+      sampled_draw_id <- withr::with_seed(
+        seed = rng_seed,
+        code = sample(
+          x = unique_draw_id,
+          size = n_draws
+        )
+      )
+    } else {
+      sampled_draw_id <- sample(
+        x = unique_draw_id,
+        size = n_draws
+      )
+    }
     result <- .data %>%
-      dplyr::slice_sample(
-        n = n_draws,
-        replace = FALSE
+      dplyr::filter(
+        .data[[draw_id]] %in% sort(sampled_draw_id)
       )
   }
   return(result)

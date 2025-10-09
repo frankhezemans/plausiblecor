@@ -82,6 +82,7 @@
 #'   \item{.draw}{The MCMC sample ID}
 #'   \item{r}{Correlation coefficient}
 #'   \item{n}{Number of complete observations used for correlation calculation}
+#'   \item{k}{Number of confounding variables used for (partial) correlation calculation}
 #'   \item{posterior_updf}{Function object for evaluating the unnormalised
 #'         posterior density at any correlation value between -1 and 1}
 #'
@@ -272,7 +273,7 @@ compute_cor <- function(
       y = covariate_values,
       method = cor_method
     )
-    k <- 0
+    k <- 0L
   } else {
     cor_mat <- stats::cor(
       x = cbind(
