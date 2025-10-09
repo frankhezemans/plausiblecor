@@ -193,6 +193,9 @@ run_plausible_cor <- function(
 
   class(result) <- c("plausible_cor", class(result))
 
+  attr(result, "parameter") <- column_names[["parameter"]]
+  attr(result, "covariate") <- column_names[["covariate"]]
+  attr(result, "confounders") <- column_names[["confounders"]]
   attr(result, "alternative") <- posterior_args[["alternative"]]
   attr(result, "method") <- posterior_args[["method"]]
 
@@ -527,6 +530,18 @@ compare_plausible_cors <- function(
   if (nrow(x) != nrow(y)) {
     rlang::abort(
       message = "Data frames 'x' and 'y' should have the same number of rows."
+    )
+  }
+
+  if (
+    (attr(x, "alternative") != attr(y, "alternative")) ||
+    (attr(x, "method") != attr(y, "method"))
+  ) {
+    rlang::abort(
+      message = paste0(
+        "'x' and 'y' should be outputs of `run_plausible_cor()`, ",
+        "called with the same settings for `alternative` and `method`."
+      )
     )
   }
 
