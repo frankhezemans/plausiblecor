@@ -26,7 +26,7 @@ prep_plausible_cor_data <- function(
     parameter = column_names[["parameter"]]
   )
 
-  covariate_data <- get_covariate_data(
+  covariate_only_data <- get_covariate_data(
     mcmc_data = mcmc_data,
     covariate_data = covariate_data,
     subject_id = column_names[["subject_id"]],
@@ -39,7 +39,7 @@ prep_plausible_cor_data <- function(
   }
   result <- dplyr::left_join(
     x = parameter_data,
-    y = covariate_data,
+    y = covariate_only_data,
     by = join_by
   )
 
