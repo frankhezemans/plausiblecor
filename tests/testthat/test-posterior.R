@@ -90,6 +90,10 @@ testthat::test_that(
       r = 0.5,
       n = 30
     )
+    posterior_pdf_approx <- plausiblecor::posterior_cor_updf(
+      r = 0,
+      n = 30
+    )
     cor_vals <- seq(from = -0.9, to = 0.9, by = 0.1)
     testthat::expect_vector(
       object = posterior_pdf(cor_vals),
@@ -98,6 +102,14 @@ testthat::test_that(
     )
     testthat::expect_true(
       object = all(is.finite(posterior_pdf(cor_vals)))
+    )
+    testthat::expect_vector(
+      object = posterior_pdf_approx(cor_vals),
+      ptype = numeric(),
+      size = length(cor_vals)
+    )
+    testthat::expect_true(
+      object = all(is.finite(posterior_pdf_approx(cor_vals)))
     )
   }
 )
@@ -117,6 +129,19 @@ testthat::test_that(
     )
     testthat::expect_identical(
       object = posterior_pdf(c(-1.1, 1.1)),
+      expected = numeric(length = 2L)
+    )
+    posterior_pdf_approx <- plausiblecor::posterior_cor_updf(
+      r = 0,
+      n = 30
+    )
+    cor_vals <- c(0, cor_vals)
+    densities_approx <- posterior_pdf_approx(cor_vals)
+    testthat::expect_true(
+      object = which.max(densities_approx) == 1L
+    )
+    testthat::expect_identical(
+      object = posterior_pdf_approx(c(-1.1, 1.1)),
       expected = numeric(length = 2L)
     )
   }
