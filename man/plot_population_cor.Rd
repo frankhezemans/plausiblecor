@@ -101,6 +101,58 @@ from the full set of draws.
 Each plotted layer can be customized using a named list of aesthetic values,
 or disabled entirely by passing \code{FALSE}.
 }
+\examples{
+# Typical usage ------------------------------------------------------------
+# for demonstration purposes only, run with small subset of MCMC samples
+caution_striatum_cor <- run_plausible_cor(
+  parameter = "caution_effect_speed",
+  covariate = "striatum",
+  mcmc_data = Forstmann_LBA,
+  covariate_data = Forstmann_fMRI,
+  n_draws = 500,
+  rng_seed = 123
+)
+plot_population_cor(caution_striatum_cor)
+# has equivalent S3 generic
+\dontrun{
+  plot(caution_striatum_cor)
+}
+# can be used with magrittr pipe operator
+\dontrun{
+  library(magrittr)
+  caution_striatum_cor \%>\%
+    plot_population_cor()
+}
+
+# Non-default plot settings ------------------------------------------------
+# simplify plot by setting certain plot elements to FALSE
+\dontrun{
+  plot_population_cor(
+    caution_striatum_cor,
+    trace_aes = FALSE,
+    mean_interval_aes = FALSE,
+    sample_rug_aes = FALSE,
+    zero_refline_aes = FALSE
+  )
+}
+# change settings of specific plot element
+\dontrun{
+  plot_population_cor(
+    caution_striatum_cor,
+    mean_interval_aes = list(
+      colour = "red", linewidth = 3
+    )
+  )
+}
+# zoom in on specific x-axis range
+\dontrun{
+  plot_population_cor(
+    caution_striatum_cor,
+    x_axis_limits = c(NA, 0.5)
+  )
+}
+
+}
 \seealso{
 \code{\link[=run_plausible_cor]{run_plausible_cor()}}
 }

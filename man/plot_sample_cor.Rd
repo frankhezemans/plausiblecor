@@ -77,6 +77,46 @@ value analysis for correlations between model parameters and covariates.
 If \code{n_draws} is less than the number of available MCMC samples, a random
 subset is selected (optionally with reproducible seeding via \code{rng_seed}).
 }
+\examples{
+# Typical usage ------------------------------------------------------------
+# for demonstration purposes only, run with small subset of MCMC samples
+caution_striatum_cor <- run_plausible_cor(
+  parameter = "caution_effect_speed",
+  covariate = "striatum",
+  mcmc_data = Forstmann_LBA,
+  covariate_data = Forstmann_fMRI,
+  n_draws = 500,
+  rng_seed = 123
+)
+plot_sample_cor(caution_striatum_cor)
+# has equivalent S3 generic
+\dontrun{
+  plot(caution_striatum_cor, type = "sample")
+}
+# can be used with magrittr pipe operator
+\dontrun{
+  library(magrittr)
+  caution_striatum_cor \%>\%
+    plot_sample_cor()
+}
+
+# Non-default plot settings ------------------------------------------------
+# histogram instead of stacked dotplot
+\dontrun{
+  plot_sample_cor(
+    caution_striatum_cor,
+    style = "hist"
+  )
+}
+# specify x-axis range
+\dontrun{
+  plot_population_cor(
+    caution_striatum_cor,
+    x_axis_limits = c(-1, 1)
+  )
+}
+
+}
 \seealso{
 \code{\link[=run_plausible_cor]{run_plausible_cor()}}, \code{\link[ggdist:stat_dotsinterval]{ggdist::stat_dotsinterval()}}, \code{\link[ggdist:stat_histinterval]{ggdist::stat_histinterval()}}
 }

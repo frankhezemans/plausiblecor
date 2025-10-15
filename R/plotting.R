@@ -70,6 +70,57 @@
 #'
 #' @seealso [run_plausible_cor()]
 #'
+#' @examples
+#' # Typical usage ------------------------------------------------------------
+#' # for demonstration purposes only, run with small subset of MCMC samples
+#' caution_striatum_cor <- run_plausible_cor(
+#'   parameter = "caution_effect_speed",
+#'   covariate = "striatum",
+#'   mcmc_data = Forstmann_LBA,
+#'   covariate_data = Forstmann_fMRI,
+#'   n_draws = 500,
+#'   rng_seed = 123
+#' )
+#' plot_population_cor(caution_striatum_cor)
+#' # has equivalent S3 generic
+#' \dontrun{
+#'   plot(caution_striatum_cor)
+#' }
+#' # can be used with magrittr pipe operator
+#' \dontrun{
+#'   library(magrittr)
+#'   caution_striatum_cor %>%
+#'     plot_population_cor()
+#' }
+#'
+#' # Non-default plot settings ------------------------------------------------
+#' # simplify plot by setting certain plot elements to FALSE
+#' \dontrun{
+#'   plot_population_cor(
+#'     caution_striatum_cor,
+#'     trace_aes = FALSE,
+#'     mean_interval_aes = FALSE,
+#'     sample_rug_aes = FALSE,
+#'     zero_refline_aes = FALSE
+#'   )
+#' }
+#' # change settings of specific plot element
+#' \dontrun{
+#'   plot_population_cor(
+#'     caution_striatum_cor,
+#'     mean_interval_aes = list(
+#'       colour = "red", linewidth = 3
+#'     )
+#'   )
+#' }
+#' # zoom in on specific x-axis range
+#' \dontrun{
+#'   plot_population_cor(
+#'     caution_striatum_cor,
+#'     x_axis_limits = c(NA, 0.5)
+#'   )
+#' }
+#'
 #' @export
 plot_population_cor <- function(
     .data,
@@ -306,6 +357,45 @@ plot_population_cor <- function(
 #' subset is selected (optionally with reproducible seeding via `rng_seed`).
 #'
 #' @seealso [run_plausible_cor()], [ggdist::stat_dotsinterval()], [ggdist::stat_histinterval()]
+#'
+#' @examples
+#' # Typical usage ------------------------------------------------------------
+#' # for demonstration purposes only, run with small subset of MCMC samples
+#' caution_striatum_cor <- run_plausible_cor(
+#'   parameter = "caution_effect_speed",
+#'   covariate = "striatum",
+#'   mcmc_data = Forstmann_LBA,
+#'   covariate_data = Forstmann_fMRI,
+#'   n_draws = 500,
+#'   rng_seed = 123
+#' )
+#' plot_sample_cor(caution_striatum_cor)
+#' # has equivalent S3 generic
+#' \dontrun{
+#'   plot(caution_striatum_cor, type = "sample")
+#' }
+#' # can be used with magrittr pipe operator
+#' \dontrun{
+#'   library(magrittr)
+#'   caution_striatum_cor %>%
+#'     plot_sample_cor()
+#' }
+#'
+#' # Non-default plot settings ------------------------------------------------
+#' # histogram instead of stacked dotplot
+#' \dontrun{
+#'   plot_sample_cor(
+#'     caution_striatum_cor,
+#'     style = "hist"
+#'   )
+#' }
+#' # specify x-axis range
+#' \dontrun{
+#'   plot_population_cor(
+#'     caution_striatum_cor,
+#'     x_axis_limits = c(-1, 1)
+#'   )
+#' }
 #'
 #' @export
 plot_sample_cor <- function(
