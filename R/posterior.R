@@ -96,6 +96,97 @@
 #' inference for Kendall's rank correlation coefficient. *The American Statistician*,
 #' *72*, 303-308. \doi{10.1080/00031305.2016.1264998}
 #'
+#' @examples
+#' # Posterior for Pearson's correlation coefficient --------------------------
+#'
+#' # example: correlation between cars' horsepower and quarter mile race time
+#' # (will be strongly negative: cars with more HP tend to need less time)
+#' r <- cor(mtcars$hp, mtcars$qsec)
+#' n <- nrow(mtcars)
+#' post_fun <- posterior_cor_updf(r, n)
+#' # this function can be used to obtain the (unnormalised) posterior density
+#' # of a correlation value
+#' post_fun(r)
+#' post_fun(c(-0.25, 0.25))
+#' # for visualisation, obtain the posterior density for an equally-spaced grid
+#' # of correlation values
+#' grid_res <- 1e-3
+#' grid <- seq(from = -1, to = 1, by = grid_res)
+#' post_dens <- post_fun(grid)
+#' plot(
+#'   x = grid, y = post_dens, type = "l",
+#'   xlab = "Pearson correlation", ylab = "",
+#'   bty = "n", yaxt = "n"
+#' )
+#'
+#' # for inference, we first need to normalise the grid of posterior densities
+#' normalise <- function(dens, dx = grid_res) {
+#'   return(dens / sum(dens * dx))
+#' }
+#' post_dens <- normalise(post_dens)
+#' post_mode <- grid[which.max(post_dens)]
+#' post_median <- approx(
+#'   x = cumsum(post_dens) * grid_res,
+#'   y = grid,
+#'   xout = 0.5,
+#'   ties = "ordered"
+#' )[["y"]]
+#' post_mean <- sum(grid * post_dens) * grid_res
+#'
+#' # Directional hypotheses ---------------------------------------------------
+#'
+#' # the alternative hypothesis can be two-sided or one-sided (strictly non-
+#' # negative or strictly non-positive).
+#' # example: more ambiguous correlation (cars' weight and quarter mile time)
+#' r_weak <- cor(mtcars$wt, mtcars$qsec)
+#' post_fun <- posterior_cor_updf(r_weak, n)
+#' # specify hypothesis that correlation is strictly non-positive
+#' post_fun_lower <- posterior_cor_updf(r_weak, n, alternative = "less")
+#' # compare posterior distributions for two-sided and one-sided hypotheses
+#' plot(
+#'   x = grid, y = normalise(post_fun_lower(grid)), type = "l", col = "red",
+#'   xlab = "Pearson correlation", ylab = "",
+#'   bty = "n", yaxt = "n"
+#' )
+#' lines(x = grid, y = normalise(post_fun(grid)))
+#'
+#' # Kendall's rank order correlation coefficient -----------------------------
+#'
+#' # Kendall's correlation is invariant to monotonic (rank-preserving)
+#' # transformations of data, as it is based on ranks rather than values
+#' # example: cars' HP is positively skewed (most cars with low-to-moderate HP,
+#' # some cars with high HP); use square root to transform
+#' r_pearson <- cor(mtcars$hp, mtcars$drat)
+#' r_pearson_trans <- cor(sqrt(mtcars$hp), mtcars$drat)
+#' identical(r_pearson, r_pearson_trans)
+#' r_kendall <- cor(mtcars$hp, mtcars$drat, method = "kendall")
+#' r_kendall_trans <- cor(sqrt(mtcars$hp), mtcars$drat, method = "kendall")
+#' identical(r_kendall, r_kendall_trans)
+#'
+#' post_fun_pearson <- posterior_cor_updf(r_pearson, n)
+#' post_fun_pearson_trans <- posterior_cor_updf(r_pearson_trans, n)
+#' post_fun_kendall <- posterior_cor_updf(r_kendall, n, method = "kendall")
+#' post_fun_kendall_trans <- posterior_cor_updf(r_kendall_trans, n, method = "kendall")
+#'
+#' # the square-root transformation affects inference for Pearson's correlation
+#' # but not for Kendall's correlation
+#' original_par <- par(no.readonly = TRUE)
+#' par(mfrow = c(1, 2))
+#' plot(
+#'   x = grid, y = normalise(post_fun_pearson_trans(grid)),
+#'   type = "l", col = "red",
+#'   xlab = "Pearson correlation", ylab = "",
+#'   bty = "n", yaxt = "n"
+#' )
+#' lines(x = grid, y = normalise(post_fun_pearson(grid)))
+#' plot(
+#'   x = grid, y = normalise(post_fun_kendall(grid)), type = "l",
+#'   xlab = "Kendall correlation", ylab = "",
+#'   bty = "n", yaxt = "n"
+#' )
+#' lines(x = grid, y = normalise(post_fun_kendall_trans(grid)), col = "red")
+#' par(original_par)
+#'
 #' @export
 posterior_cor_updf <- function(
     r,
@@ -458,7 +549,7 @@ standardise_tau <- function(r, n) {
 #' @param n Integer scalar. Sample size.
 #'
 #' @details
-#' The simulation data from Van Doorn et al. (2018) are openly available at:
+#' The simulation data from Van Doorn et al. (2018) are available at:
 #' \url{https://osf.io/download/7u7p2/}.
 #'
 #' @return Invisibly returns `NULL`. Called for its side effect of issuing a

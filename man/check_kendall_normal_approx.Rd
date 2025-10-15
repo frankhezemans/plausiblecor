@@ -26,7 +26,7 @@ function checks whether the observed combination of \code{r} and \code{n} meets 
 criteria, and issues a warning if not.
 }
 \details{
-The simulation data from Van Doorn et al. (2018) are openly available at:
+The simulation data from Van Doorn et al. (2018) are available at:
 \url{https://osf.io/download/7u7p2/}.
 }
 \keyword{internal}
