@@ -215,6 +215,13 @@ testthat::test_that(
       y = out_b,
       rng_seed = c(123L, 456L)
     )
+    out_nsamples <- plausiblecor::compare_plausible_cors(
+      x = out_a,
+      y = out_b,
+      n_samples = 10L,
+      rng_seed = c(123L, 456L)
+    )
+    out_nsamples_pop <- out_nsamples[out_nsamples[["type"]] == "population", ]
     testthat::expect_s3_class(
       object = out,
       class = c("tbl_df", "tbl", "data.frame"),
@@ -243,6 +250,22 @@ testthat::test_that(
     testthat::expect_identical(
       object = round(out[["p_dir"]], digits = 3),
       expected = c(1, 1)
+    )
+    testthat::expect_identical(
+      object = round(out_nsamples_pop[["mean"]], digits = 3),
+      expected = 0.121
+    )
+    testthat::expect_identical(
+      object = round(out_nsamples_pop[["lower"]], digits = 3),
+      expected = -0.432
+    )
+    testthat::expect_identical(
+      object = round(out_nsamples_pop[["upper"]], digits = 3),
+      expected = 0.545
+    )
+    testthat::expect_identical(
+      object = round(out_nsamples_pop[["p_dir"]], digits = 3),
+      expected = 0.68
     )
   }
 )
