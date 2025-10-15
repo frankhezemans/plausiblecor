@@ -275,14 +275,13 @@ run_plausible_cor_engine <- function(
 ) {
 
   result <- data %>%
-    dplyr::group_by(.data[[".draw"]]) %>%
     dplyr::summarise(
       cor_result = list(compute_cor(
         data = dplyr::pick(dplyr::everything()),
         column_names = column_names,
         cor_method = posterior_args[["method"]]
       )),
-      .groups = "drop"
+      .by = dplyr::all_of(c(".draw"))
     ) %>%
     tidyr::unnest_wider(
       dplyr::all_of("cor_result")
@@ -860,10 +859,9 @@ get_mean_posterior_cor <- function(.data, dx = NULL) {
   )
 
   result <- .data %>%
-    dplyr::group_by(.data[["x"]]) %>%
     dplyr::summarise(
       mean_density = mean(.data[["density"]]),
-      .groups = "drop"
+      .by = dplyr::all_of(c("x"))
     )
 
   dx <- dx %||% get_dx(result[["x"]])
