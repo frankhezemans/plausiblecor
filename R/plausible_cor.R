@@ -106,9 +106,16 @@
 #'    population, and is therefore suitable for inferences about the
 #'    correlation coefficient in the population.
 #'
-#' The function requires at least 3 valid observations per MCMC sample and
-#' filters out any correlation values that are not finite or outside the valid
-#' range of \eqn{\left[-1, 1\right]}.
+#' To compute a posterior density function for a given MCMC sample, the
+#' correlation coefficient should be a finite value in the domain
+#' \eqn{\left[-1, 1\right]}, and the number of complete observations (subjects)
+#' should be at least 3. That is, when grouping the data by `draw_id`, each
+#' level of `draw_id` should contain at least 3 parameter values and 3
+#' corresponding covariate values. Any level of `draw_id` that does not meet
+#' this requirement is removed.
+#'
+#' @seealso [summarise_plausible_cor()], [plot_sample_cor()],
+#'    [plot_population_cor()], [compare_plausible_cors()]
 #'
 #' @references
 #' Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,
@@ -128,6 +135,63 @@
 #' Van Doorn, J., Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Bayesian
 #' inference for Kendall's rank correlation coefficient. *The American Statistician*,
 #' *72*, 303-308. \doi{10.1080/00031305.2016.1264998}
+#'
+#' @examples
+#' # Typical usage: plausible correlation analysis ----------------------------
+#' \dontrun{
+#'   # correlation between latent parameter and fMRI signal in the striatum
+#'   caution_striatum_cor <- run_plausible_cor(
+#'     parameter = "caution_effect_speed",
+#'     covariate = "striatum",
+#'     mcmc_data = Forstmann_LBA,
+#'     covariate_data = Forstmann_fMRI
+#'   )
+#' }
+#' # for demonstration purposes only, run with small subset of MCMC samples
+#' caution_striatum_cor <- run_plausible_cor(
+#'   parameter = "caution_effect_speed",
+#'   covariate = "striatum",
+#'   mcmc_data = Forstmann_LBA,
+#'   covariate_data = Forstmann_fMRI,
+#'   n_draws = 500,
+#'   rng_seed = 123
+#' )
+#' # summarise and plot results for inference
+#' \dontrun{
+#'   summarise_plausible_cor(caution_striatum_cor)
+#'   plot_sample_cor(caution_striatum_cor)
+#'   plot_population_cor(caution_striatum_cor)
+#'   # these have equivalent S3 generics
+#'   summary(caution_striatum_cor)
+#'   plot(caution_striatum_cor, type = "sample")
+#'   plot(caution_striatum_cor)
+#' }
+#'
+#' # Plausible partial correlation analysis -----------------------------------
+#' # confounder(s) can be specified from both mcmc_data and covariate_data
+#' \dontrun{
+#'   caution_striatum_parcor <- run_plausible_cor(
+#'     parameter = "caution_effect_speed",
+#'     covariate = "striatum",
+#'     mcmc_data = Forstmann_LBA,
+#'     covariate_data = Forstmann_fMRI,
+#'     confounders = "pre_sma"
+#'   )
+#'   summary(caution_striatum_parcor)
+#' }
+#'
+#' # Other methods: Kendall's rank correlation; directional hypotheses --------
+#' \dontrun{
+#'   caution_striatum_rank_lower_cor <- run_plausible_cor(
+#'     parameter = "caution_effect_speed",
+#'     covariate = "striatum",
+#'     mcmc_data = Forstmann_LBA,
+#'     covariate_data = Forstmann_fMRI,
+#'     alternative = "less",
+#'     method = "kendall"
+#'   )
+#'   summary(caution_striatum_rank_lower_cor)
+#' }
 #'
 #' @export
 run_plausible_cor <- function(
@@ -348,6 +412,44 @@ compute_cor <- function(
 #' individual differences researchers. *Personality and individual differences*,
 #' *102*, 74-78. \doi{10.1016/j.paid.2016.06.069}
 #'
+#' @examples
+#' # for demonstration purposes only, run with small subset of MCMC samples
+#' caution_striatum_cor <- run_plausible_cor(
+#'   parameter = "caution_effect_speed",
+#'   covariate = "striatum",
+#'   mcmc_data = Forstmann_LBA,
+#'   covariate_data = Forstmann_fMRI,
+#'   n_draws = 500,
+#'   rng_seed = 123
+#' )
+#' # default summary
+#' summarise_plausible_cor(caution_striatum_cor)
+#' # non-default point and interval settings
+#' summarise_plausible_cor(
+#'   caution_striatum_cor,
+#'   point_interval_args = list(
+#'     point_method = "median", interval_method = "qi", interval_width = c(0.5, 0.8, 0.95)
+#'   )
+#' )
+#' # region of practical equivalence
+#' summarise_plausible_cor(caution_striatum_cor, rope_range = c(-0.1, 0.1))
+#' # can be used with magrittr pipe operator
+#' library(magrittr)
+#' caution_striatum_cor %>%
+#'   summarise_plausible_cor()
+#'
+#' # note that for directional alternative hypothesis, column p_dir is undefined
+#' \dontrun{
+#'   caution_striatum_lower_cor <- run_plausible_cor(
+#'     parameter = "caution_effect_speed",
+#'     covariate = "striatum",
+#'     mcmc_data = Forstmann_LBA,
+#'     covariate_data = Forstmann_fMRI,
+#'     alternative = "less"
+#'   )
+#'   summarise_plausible_cor(caution_striatum_lower_cor)
+#' }
+#'
 #' @export
 summarise_plausible_cor <- function(
     .data,
@@ -470,7 +572,7 @@ summarise_plausible_cor <- function(
 #'        is used to compute the proportion of the distribution contained within
 #'        the ROPE. Defaults to `NULL` in which case the ROPE is ignored.
 #' @param n_samples Integer indicating how many quantiles to draw per posterior
-#'        distribution when `comparison_method = "population"`. Default is `1`.
+#'        distribution for population-level comparison. Default is `1`.
 #' @param rng_seed Optional numeric vector of length 2 to control the random
 #'        seed for quantile sampling of `x` and `y`, respectively. If `NULL`
 #'        (default), random seeds will not be set.
@@ -504,6 +606,45 @@ summarise_plausible_cor <- function(
 #' Heathcote, A., Lin, Y.S., Reynolds, A., Strickland, L., Gretton, M., &
 #' Matzke, D. (2019). Dynamic models of choice. *Behavior Research Methods*,
 #' *51*, 961-985. \doi{10.3758/s13428-018-1067-y}
+#'
+#' @examples
+#' # comparing caution - striatum correlation with caution - pre-SMA correlation.
+#' # running each plausible correlation analysis with reduced number of samples
+#' # for demonstration purposes only
+#' caution_striatum_cor <- run_plausible_cor(
+#'   parameter = "caution_effect_speed",
+#'   covariate = "striatum",
+#'   mcmc_data = Forstmann_LBA,
+#'   covariate_data = Forstmann_fMRI,
+#'   n_draws = 500,
+#'   rng_seed = 123
+#' )
+#' caution_presma_cor <- run_plausible_cor(
+#'   parameter = "caution_effect_speed",
+#'   covariate = "pre_sma",
+#'   mcmc_data = Forstmann_LBA,
+#'   covariate_data = Forstmann_fMRI,
+#'   n_draws = 500,
+#'   rng_seed = 123
+#' )
+#' # perform comparison with default settings
+#' compare_plausible_cors(caution_striatum_cor, caution_presma_cor)
+#' # non-default point and interval summaries
+#' compare_plausible_cors(
+#'   x = caution_striatum_cor,
+#'   y = caution_presma_cor,
+#'   point_interval_args = list(
+#'     point_method = "median", interval_width = c(0.5, 0.89)
+#'   )
+#' )
+#' # multiple sampled quantiles per posterior density function for more accurate
+#' # inference on difference in population-level correlation
+#' compare_plausible_cors(
+#'   x = caution_striatum_cor,
+#'   y = caution_presma_cor,
+#'   n_samples = 100,
+#'   rng_seed = 123
+#' )
 #'
 #' @export
 compare_plausible_cors <- function(
@@ -592,10 +733,10 @@ compare_plausible_cors <- function(
       .id = "dataset"
     ) %>%
     dplyr::select(
-      dplyr::all_of(c("dataset", ".draw", "quantile"))
+      dplyr::all_of(c("dataset", ".draw", ".rep", "quantile"))
     ) %>%
     tidyr::pivot_wider(
-      id_cols = tidyr::all_of(".draw"),
+      id_cols = tidyr::all_of(c(".draw", ".rep")),
       names_from = "dataset",
       values_from = "quantile"
     ) %>%
@@ -757,6 +898,7 @@ get_mean_posterior_cor <- function(.data, dx = NULL) {
 #' @return A [tibble::tibble] with one row per sampled quantile and columns:
 #'   \item{.draw}{The MCMC draw ID}
 #'   \item{r}{The original correlation estimate for the draw}
+#'   \item{.rep}{The quantile sample ID}
 #'   \item{quantile}{A randomly sampled quantile from the posterior density}
 #'
 #' @details
@@ -835,7 +977,15 @@ get_sampled_quantiles <- function(
       .keep = "unused"
     ) %>%
     dplyr::ungroup() %>%
-    tidyr::unnest(tidyr::all_of("samples"))
+    tidyr::unnest(tidyr::all_of("samples")) %>%
+    dplyr::group_by(.data[[".draw"]]) %>%
+    dplyr::mutate(
+      .rep = seq_len(n_samples)
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(
+      dplyr::all_of(c(".draw", "r", ".rep", "quantile"))
+    )
 
   return(result)
 

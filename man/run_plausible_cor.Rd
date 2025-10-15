@@ -140,9 +140,71 @@ population, and is therefore suitable for inferences about the
 correlation coefficient in the population.
 }
 
-The function requires at least 3 valid observations per MCMC sample and
-filters out any correlation values that are not finite or outside the valid
-range of \eqn{\left[-1, 1\right]}.
+To compute a posterior density function for a given MCMC sample, the
+correlation coefficient should be a finite value in the domain
+\eqn{\left[-1, 1\right]}, and the number of complete observations (subjects)
+should be at least 3. That is, when grouping the data by \code{draw_id}, each
+level of \code{draw_id} should contain at least 3 parameter values and 3
+corresponding covariate values. Any level of \code{draw_id} that does not meet
+this requirement is removed.
+}
+\examples{
+# Typical usage: plausible correlation analysis ----------------------------
+\dontrun{
+  # correlation between latent parameter and fMRI signal in the striatum
+  caution_striatum_cor <- run_plausible_cor(
+    parameter = "caution_effect_speed",
+    covariate = "striatum",
+    mcmc_data = Forstmann_LBA,
+    covariate_data = Forstmann_fMRI
+  )
+}
+# for demonstration purposes only, run with small subset of MCMC samples
+caution_striatum_cor <- run_plausible_cor(
+  parameter = "caution_effect_speed",
+  covariate = "striatum",
+  mcmc_data = Forstmann_LBA,
+  covariate_data = Forstmann_fMRI,
+  n_draws = 500,
+  rng_seed = 123
+)
+# summarise and plot results for inference
+\dontrun{
+  summarise_plausible_cor(caution_striatum_cor)
+  plot_sample_cor(caution_striatum_cor)
+  plot_population_cor(caution_striatum_cor)
+  # these have equivalent S3 generics
+  summary(caution_striatum_cor)
+  plot(caution_striatum_cor, type = "sample")
+  plot(caution_striatum_cor)
+}
+
+# Plausible partial correlation analysis -----------------------------------
+# confounder(s) can be specified from both mcmc_data and covariate_data
+\dontrun{
+  caution_striatum_parcor <- run_plausible_cor(
+    parameter = "caution_effect_speed",
+    covariate = "striatum",
+    mcmc_data = Forstmann_LBA,
+    covariate_data = Forstmann_fMRI,
+    confounders = "pre_sma"
+  )
+  summary(caution_striatum_parcor)
+}
+
+# Other methods: Kendall's rank correlation; directional hypotheses --------
+\dontrun{
+  caution_striatum_rank_lower_cor <- run_plausible_cor(
+    parameter = "caution_effect_speed",
+    covariate = "striatum",
+    mcmc_data = Forstmann_LBA,
+    covariate_data = Forstmann_fMRI,
+    alternative = "less",
+    method = "kendall"
+  )
+  summary(caution_striatum_rank_lower_cor)
+}
+
 }
 \references{
 Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,
@@ -162,4 +224,8 @@ Correlation. \emph{PsyArXiv Preprints}. \doi{10.31234/osf.io/6muwy}
 Van Doorn, J., Ly, A., Marsman, M., & Wagenmakers, E.-J. (2018). Bayesian
 inference for Kendall's rank correlation coefficient. \emph{The American Statistician},
 \emph{72}, 303-308. \doi{10.1080/00031305.2016.1264998}
+}
+\seealso{
+\code{\link[=summarise_plausible_cor]{summarise_plausible_cor()}}, \code{\link[=plot_sample_cor]{plot_sample_cor()}},
+\code{\link[=plot_population_cor]{plot_population_cor()}}, \code{\link[=compare_plausible_cors]{compare_plausible_cors()}}
 }

@@ -58,6 +58,45 @@ plausible correlation values at both the sample level (across MCMC samples)
 and the population level (via the mean posterior density across MCMC
 samples).
 }
+\examples{
+# for demonstration purposes only, run with small subset of MCMC samples
+caution_striatum_cor <- run_plausible_cor(
+  parameter = "caution_effect_speed",
+  covariate = "striatum",
+  mcmc_data = Forstmann_LBA,
+  covariate_data = Forstmann_fMRI,
+  n_draws = 500,
+  rng_seed = 123
+)
+# default summary
+summarise_plausible_cor(caution_striatum_cor)
+# non-default point and interval settings
+summarise_plausible_cor(
+  caution_striatum_cor,
+  point_interval_args = list(
+    point_method = "median", interval_method = "qi", interval_width = c(0.5, 0.8, 0.95)
+  )
+)
+# region of practical equivalence
+summarise_plausible_cor(caution_striatum_cor, rope_range = c(-0.1, 0.1))
+# can be used with magrittr pipe operator
+library(magrittr)
+caution_striatum_cor \%>\%
+  summarise_plausible_cor()
+
+# note that for directional alternative hypothesis, column p_dir is undefined
+\dontrun{
+  caution_striatum_lower_cor <- run_plausible_cor(
+    parameter = "caution_effect_speed",
+    covariate = "striatum",
+    mcmc_data = Forstmann_LBA,
+    covariate_data = Forstmann_fMRI,
+    alternative = "less"
+  )
+  summarise_plausible_cor(caution_striatum_lower_cor)
+}
+
+}
 \references{
 Gignac, G. E., & Szodorai, E. T. (2016). Effect size guidelines for
 individual differences researchers. \emph{Personality and individual differences},

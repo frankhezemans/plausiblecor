@@ -159,7 +159,7 @@ plot(
 )
 lines(x = grid, y = normalise(post_fun(grid)))
 
-# Kendall's rank order correlation coefficient -----------------------------
+# Kendall's rank correlation coefficient -----------------------------------
 
 # Kendall's correlation is invariant to monotonic (rank-preserving)
 # transformations of data, as it is based on ranks rather than values

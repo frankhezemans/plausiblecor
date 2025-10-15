@@ -39,7 +39,7 @@ is used to compute the proportion of the distribution contained within
 the ROPE. Defaults to \code{NULL} in which case the ROPE is ignored.}
 
 \item{n_samples}{Integer indicating how many quantiles to draw per posterior
-distribution when \code{comparison_method = "population"}. Default is \code{1}.}
+distribution for population-level comparison. Default is \code{1}.}
 
 \item{rng_seed}{Optional numeric vector of length 2 to control the random
 seed for quantile sampling of \code{x} and \code{y}, respectively. If \code{NULL}
@@ -74,6 +74,46 @@ the population level rather than the specific sample of subjects.
 
 This function was adapted from code previously released with the Dynamic
 Models of Choice toolbox (Heathcote et al., 2019).
+}
+\examples{
+# comparing caution - striatum correlation with caution - pre-SMA correlation.
+# running each plausible correlation analysis with reduced number of samples
+# for demonstration purposes only
+caution_striatum_cor <- run_plausible_cor(
+  parameter = "caution_effect_speed",
+  covariate = "striatum",
+  mcmc_data = Forstmann_LBA,
+  covariate_data = Forstmann_fMRI,
+  n_draws = 500,
+  rng_seed = 123
+)
+caution_presma_cor <- run_plausible_cor(
+  parameter = "caution_effect_speed",
+  covariate = "pre_sma",
+  mcmc_data = Forstmann_LBA,
+  covariate_data = Forstmann_fMRI,
+  n_draws = 500,
+  rng_seed = 123
+)
+# perform comparison with default settings
+compare_plausible_cors(caution_striatum_cor, caution_presma_cor)
+# non-default point and interval summaries
+compare_plausible_cors(
+  x = caution_striatum_cor,
+  y = caution_presma_cor,
+  point_interval_args = list(
+    point_method = "median", interval_width = c(0.5, 0.89)
+  )
+)
+# multiple sampled quantiles per posterior density function for more accurate
+# inference on difference in population-level correlation
+compare_plausible_cors(
+  x = caution_striatum_cor,
+  y = caution_presma_cor,
+  n_samples = 100,
+  rng_seed = 123
+)
+
 }
 \references{
 Ly, A., Boehm, U., Heathcote, A., Turner, B. M., Forstmann, B., Marsman, M.,

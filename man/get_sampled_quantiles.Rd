@@ -28,6 +28,7 @@ density function. Default is \code{1e-3}.}
 A \link[tibble:tibble]{tibble::tibble} with one row per sampled quantile and columns:
 \item{.draw}{The MCMC draw ID}
 \item{r}{The original correlation estimate for the draw}
+\item{.rep}{The quantile sample ID}
 \item{quantile}{A randomly sampled quantile from the posterior density}
 }
 \description{
