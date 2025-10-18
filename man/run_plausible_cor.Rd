@@ -140,13 +140,12 @@ population, and is therefore suitable for inferences about the
 correlation coefficient in the population.
 }
 
-To compute a posterior density function for a given MCMC sample, the
-correlation coefficient should be a finite value in the domain
-\eqn{\left[-1, 1\right]}, and the number of complete observations (subjects)
-should be at least 3. That is, when grouping the data by \code{draw_id}, each
-level of \code{draw_id} should contain at least 3 parameter values and 3
-corresponding covariate values. Any level of \code{draw_id} that does not meet
-this requirement is removed.
+Note that any non-finite values (i.e., \code{NA}, \code{NaN}, \code{Inf}, or \code{-Inf}) in the
+model parameter or covariate are removed prior to analysis. To compute a
+posterior density function for a given MCMC sample, the correlation
+coefficient \code{r} should be a finite value in the domain \eqn{\left[-1, 1\right]},
+and the number of complete observations \code{n} should be at least 3. Any MCMC
+sample whose values of \code{r} and \code{n} do not meet these requirements is removed.
 }
 \examples{
 # Typical usage: plausible correlation analysis ----------------------------

@@ -106,13 +106,12 @@
 #'    population, and is therefore suitable for inferences about the
 #'    correlation coefficient in the population.
 #'
-#' To compute a posterior density function for a given MCMC sample, the
-#' correlation coefficient should be a finite value in the domain
-#' \eqn{\left[-1, 1\right]}, and the number of complete observations (subjects)
-#' should be at least 3. That is, when grouping the data by `draw_id`, each
-#' level of `draw_id` should contain at least 3 parameter values and 3
-#' corresponding covariate values. Any level of `draw_id` that does not meet
-#' this requirement is removed.
+#' Note that any non-finite values (i.e., `NA`, `NaN`, `Inf`, or `-Inf`) in the
+#' model parameter or covariate are removed prior to analysis. To compute a
+#' posterior density function for a given MCMC sample, the correlation
+#' coefficient `r` should be a finite value in the domain \eqn{\left[-1, 1\right]},
+#' and the number of complete observations `n` should be at least 3. Any MCMC
+#' sample whose values of `r` and `n` do not meet these requirements is removed.
 #'
 #' @seealso [summarise_plausible_cor()], [plot_sample_cor()],
 #'    [plot_population_cor()], [compare_plausible_cors()]
@@ -285,11 +284,23 @@ run_plausible_cor_engine <- function(
     ) %>%
     tidyr::unnest_wider(
       dplyr::all_of("cor_result")
-    ) %>%
+    )
+
+  n_pre <- nrow(result)
+  result <- result %>%
     dplyr::filter(
       .data[["n"]] >= 3 & .data[["n"]] > (.data[["k"]] + 2) &
         is.finite(.data[["r"]]) & abs(.data[["r"]]) <= 1
     )
+  n_post <- nrow(result)
+  if ((n_pre - n_post) > 0L) {
+    rlang::warn(
+      message = paste0(
+        "Removed ", n_pre - n_post, " MCMC sample(s) for which the posterior ",
+        "density function could not be computed."
+      )
+    )
+  }
 
   checkmate::assert_data_frame(
     x = result,

@@ -62,14 +62,21 @@ prep_plausible_cor_data <- function(
     )
   }
 
-  if (anyNA(result)) {
-    n_removed <- sum(!stats::complete.cases(result))
-    rlang::warn(
-      message = paste0(
-        "Removing ", n_removed, " row(s) with missing values after joining."
+  n_pre <- nrow(result)
+  result <- result %>%
+    dplyr::filter(
+      dplyr::if_all(
+        .cols = dplyr::everything(),
+        .fns = is.finite
       )
     )
-    result <- tidyr::drop_na(result)
+  n_post <- nrow(result)
+  if ((n_pre - n_post) > 0L) {
+    rlang::warn(
+      message = paste0(
+        "Removed ", n_pre - n_post, " row(s) containing non-finite values."
+      )
+    )
   }
 
   result <- result %>%
