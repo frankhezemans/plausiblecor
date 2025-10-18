@@ -1,24 +1,31 @@
-#' Calculate plausible correlation values between model parameter and covariate
+#' Calculate plausible correlation values between model parameter(s) and covariate(s)
 #'
 #' @description
-#' Implements a Bayesian approach for exploring individual differences in a
-#' model parameter that was estimated without reference to the observed
-#' covariate of interest. This function computes the correlation coefficient
-#' between subject-wise parameter values (estimated using MCMC sampling methods)
-#' and an observed covariate for each MCMC sample, resulting in a distribution
-#' of "plausible values" for the correlation coefficient. It additionally
-#' provides the posterior density function for each correlation coefficient, to
-#' enable inference about the latent correlation in the broader population (as
-#' opposed to the given sample of subjects).
+#' Implements a Bayesian approach for exploring individual differences in one or
+#' more model parameters that were estimated without reference to the observed
+#' covariate(s) of interest. For each specified pair of `parameter` and
+#' `covariate`, this function computes the correlation coefficient between
+#' subject-wise parameter values (estimated using MCMC sampling methods) and the
+#' observed covariate for each MCMC sample, resulting in a distribution of
+#' "plausible values" for the correlation coefficient. It additionally provides
+#' the posterior density function for each correlation coefficient, to enable
+#' inference about the latent correlation in the broader population (as opposed
+#' to the given sample of subjects).
 #'
 #' Depending on the chosen method, either Pearson's product-moment correlation
 #' or Kendall's rank correlation is used. Partial correlation, which adjusts
 #' for confounders, is only implemented for Pearson's method.
 #'
-#' @param parameter String denoting the column with the estimated model
-#'        parameter in `mcmc_data`.
-#' @param covariate String denoting the column with the observed covariate of
-#'        interest, either in `mcmc_data` or the optional `covariate_data`.
+#' @param parameter String or character vector denoting one or more columns with
+#'        estimated model parameter(s) in `mcmc_data`. If multiple parameters
+#'        are provided, `covariate` must be a character vector of the same
+#'        length, or a single string (which will be copied to a vector of the
+#'        same length).
+#' @param covariate String or character vector denoting one or more columns with
+#'        observed covariate(s) of interest, either in `mcmc_data` or the
+#'        optional `covariate_data`. If multiple covariates are provided,
+#'        `parameter` must be a character vector of the same length, or a single
+#'        string (which will be copied to a vector of the same length).
 #' @param mcmc_data Data frame of MCMC samples in long format, where each row
 #'        represents a unique combination of MCMC draw, subject, and
 #'        parameters.
@@ -77,14 +84,21 @@
 #'        compute the posterior density for `method = "pearson"`. Ignored for
 #'        `method = "kendall"`.
 #'
-#' @return An object of class `"plausible_cor"`, which is a [tibble::tbl_df-class]
-#'   with one row per MCMC sample containing:
+#' @return
+#' If a single parameter–covariate pair is supplied, returns an object of class
+#' `"plausible_cor"`, which is a [tibble::tbl_df-class] with one row per MCMC
+#' sample containing the following columns:
 #'   \item{.draw}{The MCMC sample ID}
 #'   \item{r}{Correlation coefficient}
 #'   \item{n}{Number of complete observations used for correlation calculation}
 #'   \item{k}{Number of confounding variables used for (partial) correlation calculation}
 #'   \item{posterior_updf}{Function object for evaluating the unnormalised
 #'         posterior density at any correlation value between -1 and 1}
+#'
+#' If multiple parameter–covariate pairs are supplied (i.e., `parameter` and
+#' `covariate` are vectors of equal length greater than 1), returns an object of
+#' class `"plausible_cor_list"`, which is a list of `"plausible_cor"` objects
+#' corresponding to each parameter–covariate set.
 #'
 #' @details
 #' This function implements the approach described by Ly et al. (2017) for
@@ -112,6 +126,11 @@
 #' coefficient `r` should be a finite value in the domain \eqn{\left[-1, 1\right]},
 #' and the number of complete observations `n` should be at least 3. Any MCMC
 #' sample whose values of `r` and `n` do not meet these requirements is removed.
+#'
+#' Each element of a `"plausible_cor_list"` is fully self-contained and can be
+#' accessed via standard list indexing (e.g., `result[[1]]`). A single
+#' `"plausible_cor"` object can be analysed and interpreted using [summary()]
+#' and [plot()] methods.
 #'
 #' @seealso [summarise_plausible_cor()], [plot_sample_cor()],
 #'    [plot_population_cor()], [compare_plausible_cors()]
@@ -192,6 +211,18 @@
 #'   summary(caution_striatum_rank_lower_cor)
 #' }
 #'
+#' # Multiple parameter-covariate sets: returns a plausible_cor_list ----------
+#' \dontrun{
+#'   multi_cor <- run_plausible_cor(
+#'     parameter = "caution_effect_speed",
+#'     covariate = c("striatum", "pre_sma"),
+#'     mcmc_data = Forstmann_LBA,
+#'     covariate_data = Forstmann_fMRI
+#'   )
+#'   print(multi_cor)
+#'   summary(multi_cor[[1]])
+#' }
+#'
 #' @export
 run_plausible_cor <- function(
     parameter,
@@ -222,13 +253,48 @@ run_plausible_cor <- function(
     )
   }
 
-  column_names <- list(
-    draw_id = draw_id %||% ".draw",
-    subject_id = subject_id %||% "subjects",
+  column_names <- validate_column_names(
     parameter = parameter,
     covariate = covariate,
+    draw_id = draw_id,
+    subject_id = subject_id,
     confounders = confounders
   )
+
+  result <- purrr::map(
+    .x = column_names,
+    .f = function(names_set) {
+      return(
+        run_plausible_cor_single(
+          column_names = names_set,
+          mcmc_data = mcmc_data,
+          covariate_data = covariate_data,
+          n_draws = n_draws,
+          rng_seed = rng_seed,
+          posterior_args = posterior_args
+        )
+      )
+    }
+  )
+
+  if (length(result) == 1L) {
+    return(result[[1L]])
+  }
+
+  class(result) <- c("plausible_cor_list", class(result))
+  return(result)
+
+}
+
+#' @noRd
+run_plausible_cor_single <- function(
+    column_names,
+    mcmc_data,
+    covariate_data,
+    n_draws,
+    rng_seed,
+    posterior_args
+) {
 
   if (inherits(mcmc_data, "emc")) {
     mcmc_data <- prep_emc_data(mcmc_data)

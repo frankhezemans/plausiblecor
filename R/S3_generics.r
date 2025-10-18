@@ -1,3 +1,44 @@
+#' Print method for plausible correlation list objects
+#'
+#' @param x An object of class "plausible_cor_list" (a list of plausible_cor objects).
+#' @param ... Optional additional arguments (ignored).
+#'
+#' @export
+#' @method print plausible_cor_list
+print.plausible_cor_list <- function(x, ...) {
+  n <- length(x)
+  cat("<plausible_cor_list object>\n")
+  cat(" Number of sets: ", n, "\n", sep = "")
+
+  print_out <- purrr::map(
+    .x = seq_along(x),
+    .f = function(idx) {
+      obj <- x[[idx]]
+      return(
+        tibble::tibble_row(
+          set = idx,
+          parameter = attr(obj, "parameter", exact = TRUE),
+          covariate = attr(obj, "covariate", exact = TRUE),
+          method = attr(obj, "method", exact = TRUE),
+          alternative = attr(obj, "alternative", exact = TRUE),
+          n_draws = dplyr::n_distinct(obj[[".draw"]])
+        )
+      )
+    }
+  ) %>%
+    purrr::list_rbind()
+
+  print(print_out, n = min(n, 5L))
+  if (n > 5L) {
+    cat("... and", n - 5, "more.\n")
+  }
+
+  cat("\nUse `x[[i]]` to inspect an individual plausible_cor object.\n")
+  invisible(x)
+
+}
+
+
 #' Print method for plausible correlation objects
 #'
 #' @param x An object of class "plausible_cor" (output from [run_plausible_cor()]).

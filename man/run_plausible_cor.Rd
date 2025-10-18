@@ -2,7 +2,7 @@
 % Please edit documentation in R/plausible_cor.R
 \name{run_plausible_cor}
 \alias{run_plausible_cor}
-\title{Calculate plausible correlation values between model parameter and covariate}
+\title{Calculate plausible correlation values between model parameter(s) and covariate(s)}
 \usage{
 run_plausible_cor(
   parameter,
@@ -20,11 +20,17 @@ run_plausible_cor(
 )
 }
 \arguments{
-\item{parameter}{String denoting the column with the estimated model
-parameter in \code{mcmc_data}.}
+\item{parameter}{String or character vector denoting one or more columns with
+estimated model parameter(s) in \code{mcmc_data}. If multiple parameters
+are provided, \code{covariate} must be a character vector of the same
+length, or a single string (which will be copied to a vector of the
+same length).}
 
-\item{covariate}{String denoting the column with the observed covariate of
-interest, either in \code{mcmc_data} or the optional \code{covariate_data}.}
+\item{covariate}{String or character vector denoting one or more columns with
+observed covariate(s) of interest, either in \code{mcmc_data} or the
+optional \code{covariate_data}. If multiple covariates are provided,
+\code{parameter} must be a character vector of the same length, or a single
+string (which will be copied to a vector of the same length).}
 
 \item{mcmc_data}{Data frame of MCMC samples in long format, where each row
 represents a unique combination of MCMC draw, subject, and
@@ -96,25 +102,32 @@ compute the posterior density for \code{method = "pearson"}. Ignored for
 }}
 }
 \value{
-An object of class \code{"plausible_cor"}, which is a \link[tibble:tbl_df-class]{tibble::tbl_df}
-with one row per MCMC sample containing:
+If a single parameter–covariate pair is supplied, returns an object of class
+\code{"plausible_cor"}, which is a \link[tibble:tbl_df-class]{tibble::tbl_df} with one row per MCMC
+sample containing the following columns:
 \item{.draw}{The MCMC sample ID}
 \item{r}{Correlation coefficient}
 \item{n}{Number of complete observations used for correlation calculation}
 \item{k}{Number of confounding variables used for (partial) correlation calculation}
 \item{posterior_updf}{Function object for evaluating the unnormalised
 posterior density at any correlation value between -1 and 1}
+
+If multiple parameter–covariate pairs are supplied (i.e., \code{parameter} and
+\code{covariate} are vectors of equal length greater than 1), returns an object of
+class \code{"plausible_cor_list"}, which is a list of \code{"plausible_cor"} objects
+corresponding to each parameter–covariate set.
 }
 \description{
-Implements a Bayesian approach for exploring individual differences in a
-model parameter that was estimated without reference to the observed
-covariate of interest. This function computes the correlation coefficient
-between subject-wise parameter values (estimated using MCMC sampling methods)
-and an observed covariate for each MCMC sample, resulting in a distribution
-of "plausible values" for the correlation coefficient. It additionally
-provides the posterior density function for each correlation coefficient, to
-enable inference about the latent correlation in the broader population (as
-opposed to the given sample of subjects).
+Implements a Bayesian approach for exploring individual differences in one or
+more model parameters that were estimated without reference to the observed
+covariate(s) of interest. For each specified pair of \code{parameter} and
+\code{covariate}, this function computes the correlation coefficient between
+subject-wise parameter values (estimated using MCMC sampling methods) and the
+observed covariate for each MCMC sample, resulting in a distribution of
+"plausible values" for the correlation coefficient. It additionally provides
+the posterior density function for each correlation coefficient, to enable
+inference about the latent correlation in the broader population (as opposed
+to the given sample of subjects).
 
 Depending on the chosen method, either Pearson's product-moment correlation
 or Kendall's rank correlation is used. Partial correlation, which adjusts
@@ -146,6 +159,11 @@ posterior density function for a given MCMC sample, the correlation
 coefficient \code{r} should be a finite value in the domain \eqn{\left[-1, 1\right]},
 and the number of complete observations \code{n} should be at least 3. Any MCMC
 sample whose values of \code{r} and \code{n} do not meet these requirements is removed.
+
+Each element of a \code{"plausible_cor_list"} is fully self-contained and can be
+accessed via standard list indexing (e.g., \code{result[[1]]}). A single
+\code{"plausible_cor"} object can be analysed and interpreted using \code{\link[=summary]{summary()}}
+and \code{\link[=plot]{plot()}} methods.
 }
 \examples{
 # Typical usage: plausible correlation analysis ----------------------------
@@ -202,6 +220,18 @@ caution_striatum_cor <- run_plausible_cor(
     method = "kendall"
   )
   summary(caution_striatum_rank_lower_cor)
+}
+
+# Multiple parameter-covariate sets: returns a plausible_cor_list ----------
+\dontrun{
+  multi_cor <- run_plausible_cor(
+    parameter = "caution_effect_speed",
+    covariate = c("striatum", "pre_sma"),
+    mcmc_data = Forstmann_LBA,
+    covariate_data = Forstmann_fMRI
+  )
+  print(multi_cor)
+  summary(multi_cor[[1]])
 }
 
 }

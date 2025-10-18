@@ -35,6 +35,81 @@ assert_posterior_args <- function(posterior_args) {
 
 }
 
+#' @noRd
+validate_column_names <- function(
+    parameter,
+    covariate,
+    draw_id = NULL,
+    subject_id = NULL,
+    confounders = NULL
+) {
+
+  checkmate::assert_character(
+    x = parameter, any.missing = FALSE, min.len = 1
+  )
+  checkmate::assert_character(
+    x = covariate, any.missing = FALSE, min.len = 1
+  )
+  if (!is.null(confounders)) {
+    checkmate::assert_character(
+      x = confounders, any.missing = FALSE, min.len = 1, unique = TRUE
+    )
+  }
+
+  if (length(parameter) == 1L && length(covariate) > 1L) {
+    parameter <- rep(parameter, length(covariate))
+  } else if (length(covariate) == 1L && length(parameter) > 1L) {
+    covariate <- rep(covariate, length(parameter))
+  }
+  if (length(parameter) != length(covariate)) {
+    rlang::abort(
+      message = paste0(
+        "`parameter` and `covariate` must have equal lengths ",
+        "or one must have length 1."
+      )
+    )
+  }
+
+  overlap_idx <- which(parameter == covariate)
+  if (length(overlap_idx) > 0L) {
+    rlang::abort(
+      paste0(
+        "Parameter and covariate names overlap in the following set(s): ",
+        paste(overlap_idx, collapse = ", ")
+      )
+    )
+  }
+
+  if (!is.null(confounders)) {
+    if (any(parameter %in% confounders) || any(covariate %in% confounders)) {
+      rlang::abort(
+        "A variable cannot be both a parameter/covariate and a confounder."
+      )
+    }
+  }
+
+  result <- purrr::map2(
+    .x = parameter,
+    .y = covariate,
+    .f = function(x, y) {
+      return(
+        list(
+          draw_id = draw_id %||% ".draw",
+          subject_id = subject_id %||% "subjects",
+          parameter = x,
+          covariate = y,
+          confounders = confounders
+        )
+      )
+    }
+  )
+  names(result) <- paste0(parameter, " ~ ", covariate)
+
+  return(result)
+
+}
+
+
 #' Validate column name inputs for functions working with data frames
 #'
 #' @description
