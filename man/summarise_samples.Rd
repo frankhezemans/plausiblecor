@@ -36,8 +36,9 @@ If \code{"greater"} or \code{"less"}, the probability of direction is undefined.
 
 \item{rope_range}{Optional numeric vector of length 2 specifying the lower
 and upper bounds of the region of practical equivalence (ROPE), which is
-used to compute the proportion of the distribution contained within the
-ROPE. Defaults to \code{NULL} in which case the ROPE is ignored.}
+used to compute the proportion of the distribution's credible interval(s)
+contained within the ROPE. Defaults to \code{NULL} in which case the ROPE is
+ignored.}
 }
 \value{
 A \link[tibble:tibble]{tibble::tibble} summarizing the posterior samples.

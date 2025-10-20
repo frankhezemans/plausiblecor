@@ -25,7 +25,7 @@ One of \code{"two.sided"} (default), \code{"greater"}, \code{"less"}.}
 from the unique values of \code{val} (grid points) using \code{\link[=diff]{diff()}}.}
 }
 \value{
-A numeric value corresponding to the probabiliyt of direction.
+A numeric value corresponding to the probability of direction.
 }
 \description{
 Internal helper function to compute the probability of direction

@@ -31,10 +31,9 @@ specification is supported; unspecified elements will use defaults.
 
 \item{rope_range}{Optional numeric vector of length 2 specifying the lower
 and upper bounds of the region of practical equivalence (ROPE), which
-is used to compute the proportion of the distribution contained within
-the ROPE. Defaults to \code{NULL} in which case the ROPE is ignored. See
-Gignac & Szodorai (2016) for guidance on what constitutes a correlation
-coefficient practically equivalent to null.}
+is used to compute the proportion of the distribution's credible
+interval(s) contained within the ROPE. Defaults to \code{NULL} in which
+case the ROPE is ignored.}
 
 \item{posterior_grid_spacing}{For summarising the population-level plausible
 correlation: The step size used to discretise each MCMC sample's
@@ -50,13 +49,35 @@ population-based summary.}
 \item{lower / upper}{Credible interval bounds for each \code{interval_width}.}
 \item{width}{If the length of \code{interval_width} is greater than 1: The width of the credible interval.}
 \item{p_dir}{Probability of direction (proportion of mass > 0 or < 0, whichever is greater). Only applicable if \code{\link[=run_plausible_cor]{run_plausible_cor()}} was called with \code{alternative = "two.sided"}.}
-\item{p_rope}{If specified: The proportion contained within the ROPE.}
+\item{p_rope}{If specified: The proportion of the distribution's credible interval(s) contained within the ROPE.}
 }
 \description{
 Takes the output of \code{\link[=run_plausible_cor]{run_plausible_cor()}} and summarises the distribution of
 plausible correlation values at both the sample level (across MCMC samples)
 and the population level (via the mean posterior density across MCMC
 samples).
+}
+\details{
+The function summarises plausible correlation estimates from
+\code{\link[=run_plausible_cor]{run_plausible_cor()}} at two levels:
+\itemize{
+\item \strong{Sample level:} Statistics (point estimate, credible intervals,
+probability of direction, and optionally ROPE metrics) are computed directly
+from the sample correlation coefficients.
+\item \strong{Population level:} Each MCMC sample's posterior density is evaluated over
+a uniform grid (defined by \code{posterior_grid_spacing}) and averaged to obtain
+a mean posterior density, from which the same summaries are derived.
+}
+
+The \code{p_dir} statistic quantifies the probability that the correlation lies on
+one side of zero, providing an index of effect \emph{existence}.
+If a region of practical equivalence (ROPE) is specified, \code{p_rope} quantifies
+the proportion of the distribution's credible interval(s) contained within it,
+providing an index of effect \emph{significance}. For guidance on setting a ROPE,
+see Gignac & Szodorai (2016) and Funder & Ozer (2019).
+
+For further interpretation guidelines, see Kruschke & Liddell (2018) and
+Makowski et al. (2019).
 }
 \examples{
 # for demonstration purposes only, run with small subset of MCMC samples
@@ -101,4 +122,17 @@ caution_striatum_cor \%>\%
 Gignac, G. E., & Szodorai, E. T. (2016). Effect size guidelines for
 individual differences researchers. \emph{Personality and individual differences},
 \emph{102}, 74-78. \doi{10.1016/j.paid.2016.06.069}
+
+Funder, D. C., & Ozer, D. J. (2019). Evaluating effect size in psychological
+research: Sense and nonsense. \emph{Advances in Methods and Practices in Psychological Science},
+\emph{2}, 156-168. \doi{10.1177/2515245919847202}
+
+Makowski, D., Ben-Shachar, M. S., Chen, S. H. A., & Lüdecke, D. (2019).
+Indices of effect existence and significance in the Bayesian framework.
+\emph{Frontiers in Psychology}, \emph{10}. \doi{10.3389/fpsyg.2019.02767}
+
+Kruschke, J. K., Liddell, T. M. (2018). The Bayesian new statistics:
+Hypothesis testing, estimation, meta-analysis, and power analysis from a
+Bayesian perspective. \emph{Psychonomic Bulletin & Review}, \emph{25}(1), 178-206.
+\doi{10.3758/s13423-016-1221-4}
 }

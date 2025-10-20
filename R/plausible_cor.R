@@ -464,10 +464,9 @@ compute_cor <- function(
 #'        specification is supported; unspecified elements will use defaults.
 #' @param rope_range Optional numeric vector of length 2 specifying the lower
 #'        and upper bounds of the region of practical equivalence (ROPE), which
-#'        is used to compute the proportion of the distribution contained within
-#'        the ROPE. Defaults to `NULL` in which case the ROPE is ignored. See
-#'        Gignac & Szodorai (2016) for guidance on what constitutes a correlation
-#'        coefficient practically equivalent to null.
+#'        is used to compute the proportion of the distribution's credible
+#'        interval(s) contained within the ROPE. Defaults to `NULL` in which
+#'        case the ROPE is ignored.
 #' @param posterior_grid_spacing For summarising the population-level plausible
 #'        correlation: The step size used to discretise each MCMC sample's
 #'        posterior density function into a grid of posterior density values.
@@ -481,12 +480,47 @@ compute_cor <- function(
 #'   \item{lower / upper}{Credible interval bounds for each `interval_width`.}
 #'   \item{width}{If the length of `interval_width` is greater than 1: The width of the credible interval.}
 #'   \item{p_dir}{Probability of direction (proportion of mass > 0 or < 0, whichever is greater). Only applicable if [run_plausible_cor()] was called with `alternative = "two.sided"`.}
-#'   \item{p_rope}{If specified: The proportion contained within the ROPE.}
+#'   \item{p_rope}{If specified: The proportion of the distribution's credible interval(s) contained within the ROPE.}
+#'
+#' @details
+#' The function summarises plausible correlation estimates from
+#' [run_plausible_cor()] at two levels:
+#'
+#' * **Sample level:** Statistics (point estimate, credible intervals,
+#'   probability of direction, and optionally ROPE metrics) are computed directly
+#'   from the sample correlation coefficients.
+#'
+#' * **Population level:** Each MCMC sample's posterior density is evaluated over
+#'   a uniform grid (defined by `posterior_grid_spacing`) and averaged to obtain
+#'   a mean posterior density, from which the same summaries are derived.
+#'
+#' The `p_dir` statistic quantifies the probability that the correlation lies on
+#' one side of zero, providing an index of effect *existence*.
+#' If a region of practical equivalence (ROPE) is specified, `p_rope` quantifies
+#' the proportion of the distribution's credible interval(s) contained within it,
+#' providing an index of effect *significance*. For guidance on setting a ROPE,
+#' see Gignac & Szodorai (2016) and Funder & Ozer (2019).
+#'
+#' For further interpretation guidelines, see Kruschke & Liddell (2018) and
+#' Makowski et al. (2019).
 #'
 #' @references
 #' Gignac, G. E., & Szodorai, E. T. (2016). Effect size guidelines for
 #' individual differences researchers. *Personality and individual differences*,
 #' *102*, 74-78. \doi{10.1016/j.paid.2016.06.069}
+#'
+#' Funder, D. C., & Ozer, D. J. (2019). Evaluating effect size in psychological
+#' research: Sense and nonsense. *Advances in Methods and Practices in Psychological Science*,
+#' *2*, 156-168. \doi{10.1177/2515245919847202}
+#'
+#' Makowski, D., Ben-Shachar, M. S., Chen, S. H. A., & Lüdecke, D. (2019).
+#' Indices of effect existence and significance in the Bayesian framework.
+#' *Frontiers in Psychology*, *10*. \doi{10.3389/fpsyg.2019.02767}
+#'
+#' Kruschke, J. K., Liddell, T. M. (2018). The Bayesian new statistics:
+#' Hypothesis testing, estimation, meta-analysis, and power analysis from a
+#' Bayesian perspective. *Psychonomic Bulletin & Review*, *25*(1), 178-206.
+#' \doi{10.3758/s13423-016-1221-4}
 #'
 #' @examples
 #' # for demonstration purposes only, run with small subset of MCMC samples
@@ -586,22 +620,38 @@ summarise_plausible_cor <- function(
     dx = posterior_grid_spacing
   )
 
+  population_p_rope <- NULL
+  if (test_rope_range(rope_range)) {
+    population_interval_nested <- tidyr::nest(
+      .data = population_interval,
+      .by = "width",
+      .key = "ci_range"
+    )
+    population_p_rope <- purrr::map_dbl(
+      .x = population_interval_nested[["ci_range"]],
+      .f = function(x) {
+        return(
+          get_p_rope(
+            val = cor_grid,
+            dens = mean_density,
+            rope_range = rope_range,
+            ci_range = unlist(x, use.names = FALSE),
+            alternative = alternative,
+            dx = posterior_grid_spacing
+          )
+        )
+      }
+    )
+  }
+
   population_summary <- population_interval %>%
     dplyr::mutate(
       type = "population",
       !!point_interval_args[["point_method"]] := population_point,
-      p_dir = population_p_dir
+      p_dir = population_p_dir,
+      p_rope = population_p_rope
     ) %>%
     dplyr::relocate(dplyr::all_of("type"))
-
-  if (test_rope_range(rope_range)) {
-    population_summary <- population_summary %>%
-      dplyr::mutate(
-        p_rope = sum(
-          mean_density[cor_grid >= rope_range[1] & cor_grid <= rope_range[2]]
-        ) * posterior_grid_spacing
-      )
-  }
 
   result <- dplyr::bind_rows(
     sample_summary,
@@ -615,6 +665,114 @@ summarise_plausible_cor <- function(
     result <- result %>%
       dplyr::select(-dplyr::all_of("width"))
   }
+
+  return(result)
+
+}
+
+#' Evaluate posterior density functions over a grid
+#'
+#' @description
+#' Helper function that evaluates each posterior density function in the output
+#' of [run_plausible_cor()] over a shared grid in the range \eqn{\left[-1, 1\right]}.
+#'
+#' @param .data Data frame output from [run_plausible_cor()].
+#' @param grid_spacing The step size for the grid of correlation values to
+#'        evaluate.
+#'
+#' @return A data frame where each row corresponds to one density value for a
+#'         given posterior density function.
+#'
+#' @keywords internal
+get_posterior_cor_densities <- function(.data, grid_spacing = 1e-3) {
+
+  validate_column_inputs(
+    col_names = c(".draw", "r", "posterior_updf"),
+    data_frame = .data,
+    data_name = ".data"
+  )
+
+  max_abs_r <- 0.999
+  n_steps <- floor(max_abs_r / grid_spacing)
+  cor_grid <- seq(
+    from = -n_steps * grid_spacing,
+    to = n_steps * grid_spacing,
+    by = grid_spacing
+  )
+
+  single_density_grid <- function(
+    draw_id, r_val, updf, grid = cor_grid, dx = grid_spacing
+  ) {
+    if (!checkmate::test_function(updf)) {
+      return(NULL)
+    }
+    dens <- updf(grid)
+    if (!test_densities(dens, test_len = length(grid))) {
+      return(NULL)
+    }
+    dens_norm <- dens / sum(dens * dx)
+    result <- tibble::tibble(
+      .draw = draw_id,
+      r = r_val,
+      x = grid,
+      density = dens_norm
+    )
+    return(result)
+  }
+
+  result <- purrr::pmap(
+    .l = .data,
+    .f = function(.draw, r, posterior_updf, ...) {
+      single_density_grid(
+        draw_id = .draw,
+        r_val = r,
+        updf = posterior_updf
+      )
+    }
+  ) %>%
+    dplyr::bind_rows()
+
+  return(result)
+
+}
+
+#' Compute mean posterior correlation density
+#'
+#' @description
+#' Helper function that computes the mean posterior density across MCMC samples,
+#' based on the evaluated densities on a shared grid.
+#' Accepts an optional `dx` argument to avoid relying on floating-point
+#' differences.
+#'
+#' @param .data Data frame output from `get_posterior_cor_densities()`.
+#' @param dx Grid spacing (step size). If `NULL` (default), it is estimated
+#'        from the unique values of `x` (grid points) using [diff()].
+#'
+#' @return A tibble with columns `x` (grid points) and `density`
+#'         (mean posterior density).
+#'
+#' @keywords internal
+get_mean_posterior_cor <- function(.data, dx = NULL) {
+
+  validate_column_inputs(
+    col_names = c(".draw", "r", "x", "density"),
+    data_frame = .data,
+    data_name = ".data"
+  )
+
+  result <- .data %>%
+    dplyr::summarise(
+      mean_density = mean(.data[["density"]]),
+      .by = dplyr::all_of(c("x"))
+    )
+
+  dx <- dx %||% get_dx(result[["x"]])
+
+  result <- result %>%
+    dplyr::mutate(
+      mean_density = .data[["mean_density"]] /
+        sum(.data[["mean_density"]] * dx)
+    )
 
   return(result)
 
@@ -847,114 +1005,6 @@ compare_plausible_cors <- function(
 
 }
 
-#' Evaluate posterior density functions over a grid
-#'
-#' @description
-#' Helper function that evaluates each posterior density function in the output
-#' of [run_plausible_cor()] over a shared grid in the range \eqn{\left[-1, 1\right]}.
-#'
-#' @param .data Data frame output from [run_plausible_cor()].
-#' @param grid_spacing The step size for the grid of correlation values to
-#'        evaluate.
-#'
-#' @return A data frame where each row corresponds to one density value for a
-#'         given posterior density function.
-#'
-#' @keywords internal
-get_posterior_cor_densities <- function(.data, grid_spacing = 1e-3) {
-
-  validate_column_inputs(
-    col_names = c(".draw", "r", "posterior_updf"),
-    data_frame = .data,
-    data_name = ".data"
-  )
-
-  max_abs_r <- 0.999
-  n_steps <- floor(max_abs_r / grid_spacing)
-  cor_grid <- seq(
-    from = -n_steps * grid_spacing,
-    to = n_steps * grid_spacing,
-    by = grid_spacing
-  )
-
-  single_density_grid <- function(
-    draw_id, r_val, updf, grid = cor_grid, dx = grid_spacing
-  ) {
-    if (!checkmate::test_function(updf)) {
-      return(NULL)
-    }
-    dens <- updf(grid)
-    if (!test_densities(dens, test_len = length(grid))) {
-      return(NULL)
-    }
-    dens_norm <- dens / sum(dens * dx)
-    result <- tibble::tibble(
-      .draw = draw_id,
-      r = r_val,
-      x = grid,
-      density = dens_norm
-    )
-    return(result)
-  }
-
-  result <- purrr::pmap(
-    .l = .data,
-    .f = function(.draw, r, posterior_updf, ...) {
-      single_density_grid(
-        draw_id = .draw,
-        r_val = r,
-        updf = posterior_updf
-      )
-    }
-  ) %>%
-    dplyr::bind_rows()
-
-  return(result)
-
-}
-
-#' Compute mean posterior correlation density
-#'
-#' @description
-#' Helper function that computes the mean posterior density across MCMC samples,
-#' based on the evaluated densities on a shared grid.
-#' Accepts an optional `dx` argument to avoid relying on floating-point
-#' differences.
-#'
-#' @param .data Data frame output from `get_posterior_cor_densities()`.
-#' @param dx Grid spacing (step size). If `NULL` (default), it is estimated
-#'        from the unique values of `x` (grid points) using [diff()].
-#'
-#' @return A tibble with columns `x` (grid points) and `density`
-#'         (mean posterior density).
-#'
-#' @keywords internal
-get_mean_posterior_cor <- function(.data, dx = NULL) {
-
-  validate_column_inputs(
-    col_names = c(".draw", "r", "x", "density"),
-    data_frame = .data,
-    data_name = ".data"
-  )
-
-  result <- .data %>%
-    dplyr::summarise(
-      mean_density = mean(.data[["density"]]),
-      .by = dplyr::all_of(c("x"))
-    )
-
-  dx <- dx %||% get_dx(result[["x"]])
-
-  result <- result %>%
-    dplyr::mutate(
-      mean_density = .data[["mean_density"]] /
-        sum(.data[["mean_density"]] * dx)
-    )
-
-  return(result)
-
-}
-
 #' Sample quantiles from posterior correlation densities
 #'
 #' @description
@@ -1092,8 +1142,9 @@ get_sampled_quantiles <- function(
 #'    If `"greater"` or `"less"`, the probability of direction is undefined.
 #' @param rope_range Optional numeric vector of length 2 specifying the lower
 #'    and upper bounds of the region of practical equivalence (ROPE), which is
-#'    used to compute the proportion of the distribution contained within the
-#'    ROPE. Defaults to `NULL` in which case the ROPE is ignored.
+#'    used to compute the proportion of the distribution's credible interval(s)
+#'    contained within the ROPE. Defaults to `NULL` in which case the ROPE is
+#'    ignored.
 #'
 #' @return A [tibble::tibble] summarizing the posterior samples.
 #'
@@ -1130,13 +1181,6 @@ summarise_samples <- function(
     )
   }
 
-  p_rope <- NULL
-  if (test_rope_range(rope_range)) {
-    p_rope <- mean(
-      data[[varname]] >= rope_range[1] & data[[varname]] <= rope_range[2]
-    )
-  }
-
   point_fun <- switch(
     point_method,
     "mean" = mean,
@@ -1166,7 +1210,33 @@ summarise_samples <- function(
       !!point_method := !!rlang::sym(varname)
     ) %>%
     dplyr::mutate(
-      p_dir = p_dir,
+      p_dir = p_dir
+    )
+
+  p_rope <- NULL
+  if (test_rope_range(rope_range)) {
+    interval_nested <- tidyr::nest(
+      .data = result,
+      ci_range = tidyr::all_of(c("lower", "upper")),
+      .by = "width"
+    )
+    p_rope <- purrr::map_dbl(
+      .x = interval_nested[["ci_range"]],
+      .f = function(x) {
+        ci_range <- unlist(x, use.names = FALSE)
+        values <- data[[varname]]
+        ci_mask <- values >= ci_range[1] & values <= ci_range[2]
+        values_ci <- values[ci_mask]
+        result <- mean(
+          values_ci >= rope_range[1] & values_ci <= rope_range[2]
+        )
+        return(result)
+      }
+    )
+  }
+
+  result <- result %>%
+    dplyr::mutate(
       p_rope = p_rope
     )
 

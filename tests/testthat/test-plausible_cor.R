@@ -133,8 +133,8 @@ testthat::test_that(
       expected = c(1, 0.882)
     )
     testthat::expect_identical(
-      object = round(unique(summary_out[["p_rope"]]), digits = 3),
-      expected = c(0, 0.153)
+      object = round(summary_out[["p_rope"]], digits = 3),
+      expected = c(0, 0, 0.100, 0.161)
     )
   }
 )
@@ -313,8 +313,8 @@ testthat::test_that(
       expected = NA_real_
     )
     testthat::expect_identical(
-      object = round(unique(out[["p_rope"]]), digits = 3),
-      expected = c(0, 0.193)
+      object = round(out[["p_rope"]], digits = 3),
+      expected = c(0, 0, 0.112, 0.173)
     )
   }
 )

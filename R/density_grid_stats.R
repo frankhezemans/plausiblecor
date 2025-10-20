@@ -27,11 +27,7 @@ get_point_estimate <- function(
     dx = NULL
 ) {
 
-  if (length(val) != length(dens)) {
-    rlang::abort(
-      message = "Input arguments 'val' and 'dens' must be of equal length."
-    )
-  }
+  assert_val_dens_lengths(val, dens)
   method <- rlang::arg_match(arg = method)
   dx <- dx %||% get_dx(val)
 
@@ -88,11 +84,7 @@ get_interval <- function(
     dx = NULL
 ) {
 
-  if (length(val) != length(dens)) {
-    rlang::abort(
-      message = "Input arguments 'val' and 'dens' must be of equal length."
-    )
-  }
+  assert_val_dens_lengths(val, dens)
   method <- rlang::arg_match(arg = method)
   dx <- dx %||% get_dx(val)
 
@@ -159,7 +151,7 @@ get_interval <- function(
 #' Note that the notion of the probability of direction is undefined for one-sided
 #' hypotheses. If `alternative != "two.sided`, the returned value is `NA_real_`.
 #'
-#' @return A numeric value corresponding to the probabiliyt of direction.
+#' @return A numeric value corresponding to the probability of direction.
 #'
 #' @keywords internal
 get_p_dir <- function(
@@ -169,13 +161,8 @@ get_p_dir <- function(
     dx = NULL
 ) {
 
-  if (length(val) != length(dens)) {
-    rlang::abort(
-      message = "Input arguments 'val' and 'dens' must be of equal length."
-    )
-  }
+  assert_val_dens_lengths(val, dens)
   alternative <- rlang::arg_match(arg = alternative)
-
   if (alternative != "two.sided") {
     return(NA_real_)
   }
@@ -187,6 +174,128 @@ get_p_dir <- function(
   )
   return(result)
 
+}
+
+#' @title Perform ROPE-based Equivalence Test from Discretised Density
+#'
+#' @description Internal helper function to perform an equivalence test, based
+#' on a numeric vector of values and a corresponding density over a discretised
+#' grid. In equivalence testing, the null hypothesis is that a parameter value
+#' falls within a specified region of practical equivalence (ROPE). The
+#' proportion of the distribution (or a credible interval thereof) contained
+#' within the ROPE can be used as a decision rule regarding the "significance"
+#' of a parameter.
+#'
+#' @param val Numeric vector representing the grid of values over which the
+#'        density is defined.
+#' @param dens Numeric vector of the same length as `val`, representing the
+#'        density at each grid point.
+#' @param rope_range Numeric vector of length 2 specifying the lower and upper
+#'        bounds of the ROPE.
+#' @param ci_range Optional numeric vector of length 2 specifying the lower and
+#'        bounds of a credible interval (CI) of the distribution. If `NULL`
+#'        (default), the returned value represents the proportion of the *full distribution*
+#'        contained within the ROPE. If a CI of the distribution is provided,
+#'        the returned value represents the proportion of the *distribution's CI*
+#'        contained within the ROPE.
+#' @param alternative Character string specifying the alternative hypothesis.
+#'        One of `"two.sided"` (default), `"greater"`, `"less"`.
+#' @param dx Grid spacing (step size). If `NULL` (default), it is estimated
+#'        from the unique values of `val` (grid points) using [diff()].
+#'
+#' @details
+#' The ROPE-based p-value allows for a pragmatic interpretation of the
+#' "significance" of an effect, indicating if a parameter is effectively zero
+#' for all practical purposes. It is commonly computed as the proportion of the
+#' distribution's 95% CI contained within the ROPE (Kruschke & Liddell, 2018).
+#' If `p_rope` is approximately equal to 1, (almost) all of the distribution's
+#' most-credible values are inside the ROPE, suggesting that the null hypothesis
+#' can be accepted. If `p_rope` is approximately equal to 0, (almost) all of
+#' the distribution's most-credible values are outside the ROPE, suggesting
+#' that the null hypothesis can be rejected. Otherwise, it remains unclear if
+#' the null hypothesis should be accepted or rejected.
+#' However, some have argued that computing the proportion of the *full distribution*
+#' (as opposed to the *distribution's CI*) contained within the ROPE provides a
+#' more sensitive test (Makowski et al., 2019). In this case, `p_rope` values
+#' less than 0.025 and greater than 0.975 are used as thresholds to reject or
+#' accept the null hypothesis, respectively.
+#'
+#' @return A numeric value corresponding to the proportion of the distribution
+#'  (or credible interval thereof) contained within the ROPE.
+#'
+#' @references
+#' Makowski, D., Ben-Shachar, M. S., Chen, S. H. A., & Lüdecke, D. (2019).
+#' Indices of effect existence and significance in the Bayesian framework.
+#' *Frontiers in Psychology*, *10*. \doi{10.3389/fpsyg.2019.02767}
+#'
+#' Kruschke, J. K., Liddell, T. M. (2018). The Bayesian new statistics:
+#' Hypothesis testing, estimation, meta-analysis, and power analysis from a
+#' Bayesian perspective. *Psychonomic Bulletin & Review*, *25*(1), 178-206.
+#' \doi{10.3758/s13423-016-1221-4}
+#'
+#' @keywords internal
+get_p_rope <- function(
+    val,
+    dens,
+    rope_range,
+    ci_range = NULL,
+    alternative = c("two.sided", "greater", "less"),
+    dx = NULL
+) {
+
+  if (!test_rope_range(rope_range)) {
+    return(NULL)
+  }
+  assert_val_dens_lengths(val, dens)
+  alternative <- rlang::arg_match(arg = alternative)
+  dx <- dx %||% get_dx(val)
+
+  dens <- dens / sum(dens * dx)
+
+  if (!is.null(ci_range)) {
+    ci_mask <- val >= ci_range[1] & val <= ci_range[2]
+  } else {
+    ci_mask <- rep(TRUE, times = length(val))
+  }
+  val_ci <- val[ci_mask]
+  dens_ci <- dens[ci_mask]
+  dens_ci <- dens_ci / sum(dens_ci * dx)
+
+  result <- get_area_in_range(
+    x = val_ci,
+    density = dens_ci,
+    lower = rope_range[1],
+    upper = rope_range[2],
+    dx = dx
+  )
+  return(result)
+
+}
+
+#' @importFrom utils tail
+#' @noRd
+get_area_in_range <- function(x, density, lower, upper, dx) {
+  in_range <- x >= lower & x <= upper
+  x_sub <- x[in_range]
+  d_sub <- density[in_range]
+  if (length(x_sub) < 2) {
+    return(0)
+  }
+  result <- dx * sum(
+    (head(d_sub, n = -1) + tail(d_sub, n = -1)) / 2
+  )
+  return(result)
+}
+
+
+#' @noRd
+assert_val_dens_lengths <- function(val, dens) {
+  if (length(val) != length(dens)) {
+    rlang::abort(
+      message = "Input arguments 'val' and 'dens' must be of equal length."
+    )
+  }
+  return(invisible(x = NULL))
 }
 
 #' @noRd

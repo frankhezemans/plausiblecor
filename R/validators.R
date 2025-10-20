@@ -213,8 +213,9 @@ validate_point_interval_args <- function(x) {
 
   checkmate::assert_double(
     x = result[["interval_width"]],
-    lower = 0 + sqrt(.Machine$double.eps),
-    upper = 1 - sqrt(.Machine$double.eps),
+    lower = 0,
+    upper = 1,
+    finite = TRUE,
     any.missing = FALSE
   )
 
@@ -225,15 +226,14 @@ validate_point_interval_args <- function(x) {
 #' @noRd
 test_rope_range <- function(x) {
   return(
-    checkmate::test_numeric(
+    checkmate::test_double(
       x = x,
       lower = -1,
       upper = 1,
       finite = TRUE,
       any.missing = FALSE,
-      sorted = TRUE,
       len = 2,
-      null.ok = FALSE
+      sorted = TRUE
     )
   )
 }
