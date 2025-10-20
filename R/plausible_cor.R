@@ -480,7 +480,7 @@ compute_cor <- function(
 #'   \item{mean / median}{Point estimate of the correlation coefficient.}
 #'   \item{lower / upper}{Credible interval bounds for each `interval_width`.}
 #'   \item{width}{If the length of `interval_width` is greater than 1: The width of the credible interval.}
-#'   \item{p_dir}{Directional probability (proportion of mass > 0 or < 0, whichever is greater). Only applicable if [run_plausible_cor()] was called with `alternative = "two.sided"`.}
+#'   \item{p_dir}{Probability of direction (proportion of mass > 0 or < 0, whichever is greater). Only applicable if [run_plausible_cor()] was called with `alternative = "two.sided"`.}
 #'   \item{p_rope}{If specified: The proportion contained within the ROPE.}
 #'
 #' @references
@@ -541,6 +541,7 @@ summarise_plausible_cor <- function(
   )
 
   point_interval_args <- validate_point_interval_args(point_interval_args)
+  alternative <- attr(.data, "alternative", exact = TRUE)
 
   sample_summary <- .data %>%
     dplyr::select(dplyr::all_of("r")) %>%
@@ -548,6 +549,7 @@ summarise_plausible_cor <- function(
       point_method = point_interval_args[["point_method"]],
       interval_width = point_interval_args[["interval_width"]],
       interval_method = point_interval_args[["interval_method"]],
+      alternative = alternative,
       rope_range = rope_range
     ) %>%
     dplyr::mutate(
@@ -577,14 +579,18 @@ summarise_plausible_cor <- function(
     dx = posterior_grid_spacing
   )
 
+  population_p_dir <- get_p_dir(
+    val = cor_grid,
+    dens = mean_density,
+    alternative = alternative,
+    dx = posterior_grid_spacing
+  )
+
   population_summary <- population_interval %>%
     dplyr::mutate(
       type = "population",
       !!point_interval_args[["point_method"]] := population_point,
-      p_dir = max(
-        sum(mean_density[cor_grid > 0]) * posterior_grid_spacing,
-        sum(mean_density[cor_grid < 0]) * posterior_grid_spacing
-      )
+      p_dir = population_p_dir
     ) %>%
     dplyr::relocate(dplyr::all_of("type"))
 
@@ -598,7 +604,8 @@ summarise_plausible_cor <- function(
   }
 
   result <- dplyr::bind_rows(
-    sample_summary, population_summary
+    sample_summary,
+    population_summary
   ) %>%
     dplyr::mutate(
       type = factor(.data[["type"]])
@@ -607,11 +614,6 @@ summarise_plausible_cor <- function(
   if (length(point_interval_args[["interval_width"]]) == 1) {
     result <- result %>%
       dplyr::select(-dplyr::all_of("width"))
-  }
-
-  alternative <- attr(.data, "alternative", exact = TRUE)
-  if (alternative != "two.sided") {
-    result[["p_dir"]] <- NA_real_
   }
 
   return(result)
@@ -1085,10 +1087,13 @@ get_sampled_quantiles <- function(
 #' @param interval_method A string indicating the method for computing intervals.
 #'   Can either be `"hdci"` (highest-density continous intervals; default) or
 #'   `"qi"` (quantile intervals).
+#' @param alternative Optional character string specifying the alternative
+#'    hypothesis. One of `"two.sided"` (default), `"greater"`, `"less"`.
+#'    If `"greater"` or `"less"`, the probability of direction is undefined.
 #' @param rope_range Optional numeric vector of length 2 specifying the lower
-#'        and upper bounds of the region of practical equivalence (ROPE), which
-#'        is used to compute the proportion of the distribution contained within
-#'        the ROPE. Defaults to `NULL` in which case the ROPE is ignored.
+#'    and upper bounds of the region of practical equivalence (ROPE), which is
+#'    used to compute the proportion of the distribution contained within the
+#'    ROPE. Defaults to `NULL` in which case the ROPE is ignored.
 #'
 #' @return A [tibble::tibble] summarizing the posterior samples.
 #'
@@ -1099,8 +1104,13 @@ summarise_samples <- function(
     point_method = c("mean", "median"),
     interval_width = 0.95,
     interval_method = c("hdci", "qi"),
+    alternative = c("two.sided", "greater", "less"),
     rope_range = NULL
 ) {
+
+  point_method <- rlang::arg_match(arg = point_method)
+  interval_method <- rlang::arg_match(arg = interval_method)
+  alternative <- rlang::arg_match(arg = alternative)
 
   data <- .data %>%
     dplyr::select(dplyr::where(is.numeric))
@@ -1112,10 +1122,13 @@ summarise_samples <- function(
   )
   varname <- colnames(data)
 
-  p_dir <- max(
-    mean(data[[varname]] > 0),
-    mean(data[[varname]] < 0)
-  )
+  p_dir <- NA_real_
+  if (alternative == "two.sided") {
+    p_dir <- max(
+      mean(data[[varname]] > 0),
+      mean(data[[varname]] < 0)
+    )
+  }
 
   p_rope <- NULL
   if (test_rope_range(rope_range)) {
@@ -1153,15 +1166,9 @@ summarise_samples <- function(
       !!point_method := !!rlang::sym(varname)
     ) %>%
     dplyr::mutate(
-      p_dir = p_dir
+      p_dir = p_dir,
+      p_rope = p_rope
     )
-
-  if (!is.null(p_rope)) {
-    result <- result %>%
-      dplyr::mutate(
-        p_rope = p_rope
-      )
-  }
 
   return(result)
 

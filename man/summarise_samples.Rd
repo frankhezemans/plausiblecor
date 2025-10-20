@@ -10,6 +10,7 @@ summarise_samples(
   point_method = c("mean", "median"),
   interval_width = 0.95,
   interval_method = c("hdci", "qi"),
+  alternative = c("two.sided", "greater", "less"),
   rope_range = NULL
 )
 }
@@ -29,10 +30,14 @@ width(s) of the credible interval(s) to calculate. Default is \code{0.95}.}
 Can either be \code{"hdci"} (highest-density continous intervals; default) or
 \code{"qi"} (quantile intervals).}
 
+\item{alternative}{Optional character string specifying the alternative
+hypothesis. One of \code{"two.sided"} (default), \code{"greater"}, \code{"less"}.
+If \code{"greater"} or \code{"less"}, the probability of direction is undefined.}
+
 \item{rope_range}{Optional numeric vector of length 2 specifying the lower
-and upper bounds of the region of practical equivalence (ROPE), which
-is used to compute the proportion of the distribution contained within
-the ROPE. Defaults to \code{NULL} in which case the ROPE is ignored.}
+and upper bounds of the region of practical equivalence (ROPE), which is
+used to compute the proportion of the distribution contained within the
+ROPE. Defaults to \code{NULL} in which case the ROPE is ignored.}
 }
 \value{
 A \link[tibble:tibble]{tibble::tibble} summarizing the posterior samples.

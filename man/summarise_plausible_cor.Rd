@@ -49,7 +49,7 @@ population-based summary.}
 \item{mean / median}{Point estimate of the correlation coefficient.}
 \item{lower / upper}{Credible interval bounds for each \code{interval_width}.}
 \item{width}{If the length of \code{interval_width} is greater than 1: The width of the credible interval.}
-\item{p_dir}{Directional probability (proportion of mass > 0 or < 0, whichever is greater). Only applicable if \code{\link[=run_plausible_cor]{run_plausible_cor()}} was called with \code{alternative = "two.sided"}.}
+\item{p_dir}{Probability of direction (proportion of mass > 0 or < 0, whichever is greater). Only applicable if \code{\link[=run_plausible_cor]{run_plausible_cor()}} was called with \code{alternative = "two.sided"}.}
 \item{p_rope}{If specified: The proportion contained within the ROPE.}
 }
 \description{

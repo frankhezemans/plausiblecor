@@ -129,6 +129,66 @@ get_interval <- function(
 
 }
 
+#' @title Compute Probability of Direction from Discretised Density
+#'
+#' @description Internal helper function to compute the probability of direction
+#' from a numeric vector of values and a corresponding density over a
+#' discretised grid.
+#'
+#' @param val Numeric vector representing the grid of values over which the
+#'        density is defined.
+#' @param dens Numeric vector of the same length as `val`, representing the
+#'        density at each grid point.
+#' @param alternative Character string specifying the alternative hypothesis.
+#'        One of `"two.sided"` (default), `"greater"`, `"less"`.
+#' @param dx Grid spacing (step size). If `NULL` (default), it is estimated
+#'        from the unique values of `val` (grid points) using [diff()].
+#'
+#' @details
+#' The probability of direction (PD) represents the proportion of the
+#' distribution that lies on one side of zero. For example, a PD of `0.92` means
+#' that 92% of the distribution's mass lies one one side (strictly positive or
+#' strictly negative values, whichever is greatest). In the context of
+#' hypothesis testing, it can be taken as an index of the _existence_ of an
+#' effect, but does _not_ necessarily address the size, importance, or
+#' _"significance"_ of an effect. For example, a vanishingly small effect whose
+#' distribution is precisely concentrated within the
+#' \eqn{\left[0.0001, 0.0002\right]} range would still have a PD of
+#' approximately `1`.
+#'
+#' Note that the notion of the probability of direction is undefined for one-sided
+#' hypotheses. If `alternative != "two.sided`, the returned value is `NA_real_`.
+#'
+#' @return A numeric value corresponding to the probabiliyt of direction.
+#'
+#' @keywords internal
+get_p_dir <- function(
+    val,
+    dens,
+    alternative = c("two.sided", "greater", "less"),
+    dx = NULL
+) {
+
+  if (length(val) != length(dens)) {
+    rlang::abort(
+      message = "Input arguments 'val' and 'dens' must be of equal length."
+    )
+  }
+  alternative <- rlang::arg_match(arg = alternative)
+
+  if (alternative != "two.sided") {
+    return(NA_real_)
+  }
+  dx <- dx %||% get_dx(val)
+
+  result <- max(
+    sum(dens[val > 0]) * dx,
+    sum(dens[val < 0]) * dx
+  )
+  return(result)
+
+}
+
 #' @noRd
 get_dx <- function(x, tol = 1e-12) {
   dxs <- diff(sort(unique(x)))
