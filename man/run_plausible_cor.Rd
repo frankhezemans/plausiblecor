@@ -231,7 +231,7 @@ caution_striatum_cor <- run_plausible_cor(
     covariate_data = Forstmann_fMRI
   )
   print(multi_cor)
-  summary(multi_cor[[1]])
+  summary(multi_cor)
 }
 
 }

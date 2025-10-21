@@ -224,19 +224,87 @@ validate_point_interval_args <- function(x) {
 
 
 #' @noRd
-test_rope_range <- function(x) {
-  return(
-    checkmate::test_double(
-      x = x,
-      lower = -1,
-      upper = 1,
-      finite = TRUE,
-      any.missing = FALSE,
-      len = 2,
-      sorted = TRUE
-    )
+validate_rope_range <- function(
+    x, alternative = c("two.sided", "greater", "less")
+) {
+  if (is.null(x)) {
+    return(x)
+  }
+  alternative <- rlang::arg_match(alternative)
+  checkmate::assert_double(
+    x,
+    lower = -1,
+    upper = 1,
+    finite = TRUE,
+    any.missing = FALSE,
+    len = 2,
+    sorted = TRUE
   )
+
+  if (alternative == "less") {
+    if (x[1] > 0) {
+      rlang::abort(
+        message = c(
+          "Invalid `rope_range` given `alternative = 'less'`",
+          i = sprintf("Both bounds are positive: c(%.3f, %.3f).", x[1], x[2]),
+          x = "`rope_range` for `alternative = 'less'` must include only non-positive values."
+        )
+      )
+    } else if (x[2] > 0) {
+      rlang::warn(
+        message = c(
+          "Second element of `rope_range` exceeds zero despite `alternative = 'less'`",
+          i = sprintf("Capping upper bound from %.3f to 0.", x[2])
+        )
+      )
+      x[2] <- 0
+    }
+  } else if (alternative == "greater") {
+    if (x[2] < 0) {
+      rlang::abort(
+        message = c(
+          "Invalid `rope_range` given `alternative = 'greater'`",
+          i = sprintf("Both bounds are negative: c(%.3f, %.3f).", x[1], x[2]),
+          x = "`rope_range` for `alternative = 'greater'` must include only non-negative values."
+        )
+      )
+    } else if (x[1] < 0) {
+      rlang::warn(
+        message = c(
+          "First element of `rope_range` is less than zero despite `alternative = 'greater'`",
+          i = sprintf("Capping lower bound from %.3f to 0.", x[1])
+        )
+      )
+      x[1] <- 0
+    }
+
+  } else {
+    if (x[1] > 0 || x[2] < 0) {
+      rlang::abort(
+        message = c(
+          "Invalid `rope_range` given `alternative = 'two.sided'`",
+          i = sprintf("ROPE does not include zero: c(%.3f, %.3f).", x[1], x[2]),
+          x = "`rope_range` for `alternative = 'two.sided'` must straddle zero."
+        )
+      )
+    }
+    if (!isTRUE(all.equal(abs(x[1]), x[2], tolerance = 1e-8))) {
+      rlang::warn(
+        message = c(
+          "Asymmetric ROPE for `alternative = 'two.sided'`.",
+          i = sprintf(
+            "Lower and upper bounds differ in magnitude: c(%.3f, %.3f).",
+            x[1], x[2]
+          ),
+          x = "Consider using a symmetric ROPE around zero for `alternative = 'two.sided'`"
+        )
+      )
+    }
+  }
+
+  return(x)
 }
+
 
 #' @noRd
 test_rng_seed <- function(x) {

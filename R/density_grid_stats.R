@@ -243,11 +243,12 @@ get_p_rope <- function(
     dx = NULL
 ) {
 
-  if (!test_rope_range(rope_range)) {
-    return(NULL)
-  }
   assert_val_dens_lengths(val, dens)
   alternative <- rlang::arg_match(arg = alternative)
+  rope_range <- validate_rope_range(x = rope_range, alternative = alternative)
+  if (is.null(rope_range)) {
+    return(NULL)
+  }
   dx <- dx %||% get_dx(val)
 
   dens <- dens / sum(dens * dx)
@@ -282,7 +283,7 @@ get_area_in_range <- function(x, density, lower, upper, dx) {
     return(0)
   }
   result <- dx * sum(
-    (head(d_sub, n = -1) + tail(d_sub, n = -1)) / 2
+    (utils::head(d_sub, n = -1) + utils::tail(d_sub, n = -1)) / 2
   )
   return(result)
 }

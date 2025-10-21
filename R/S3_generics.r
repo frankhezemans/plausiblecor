@@ -6,9 +6,18 @@
 #' @export
 #' @method print plausible_cor_list
 print.plausible_cor_list <- function(x, ...) {
-  n <- length(x)
   cat("<plausible_cor_list object>\n")
-  cat(" Number of sets: ", n, "\n", sep = "")
+  cat(" Number of plausible correlation analyses: ", length(x), "\n", sep = "")
+  cat(" Shared settings:", "\n", sep = "")
+  purrr::walk(
+    .x = c(
+      "method", "alternative", "confounders"
+    ),
+    .f = function(name) {
+      print_plausible_cor_attr(x = x[[1]], name = name, n_space = 2L)
+    }
+  )
+  cat("\n", sep = "")
 
   print_out <- purrr::map(
     .x = seq_along(x),
@@ -16,26 +25,97 @@ print.plausible_cor_list <- function(x, ...) {
       obj <- x[[idx]]
       return(
         tibble::tibble_row(
-          set = idx,
           parameter = attr(obj, "parameter", exact = TRUE),
           covariate = attr(obj, "covariate", exact = TRUE),
-          method = attr(obj, "method", exact = TRUE),
-          alternative = attr(obj, "alternative", exact = TRUE),
-          n_draws = dplyr::n_distinct(obj[[".draw"]])
+          n_draws = dplyr::n_distinct(obj[[".draw"]]),
+          n_valid_post = n_valid_updf(obj)
         )
       )
     }
   ) %>%
     purrr::list_rbind()
 
-  print(print_out, n = min(n, 5L))
-  if (n > 5L) {
-    cat("... and", n - 5, "more.\n")
-  }
+  cat(" Analysis-specific details:", "\n", sep = "")
+  print(print_out, ...)
+  return(invisible(x))
+}
 
-  cat("\nUse `x[[i]]` to inspect an individual plausible_cor object.\n")
-  invisible(x)
+#' Summary method for plausible correlation list objects
+#'
+#' @description
+#' Summarises a list of plausible correlation objects returned by
+#' [run_plausible_cor()]. Each element of the list is summarised
+#' via [summary.plausible_cor()], and the results are combined into a single
+#' tibble for convenient inspection or downstream processing.
+#'
+#' @param object An object of class "plausible_cor_list": the output from
+#'    [run_plausible_cor()] when multiple parameter–covariate pairs are analysed.
+#' @param point_interval_args Optional named list specifying how the central
+#'    tendency and credible interval(s) should be computed. See
+#'    [summarise_plausible_cor()] for details.
+#' @param rope_range Optional numeric vector of length 2 specifying the ROPE
+#'    bounds. See [summarise_plausible_cor()] for details.
+#' @param ... Additional arguments passed to [summary.plausible_cor()].
+#'
+#' @return A tibble with class `"summary.plausible_cor_list"`.
+#' @export
+#' @method summary plausible_cor_list
+summary.plausible_cor_list <- function(
+    object,
+    point_interval_args = NULL,
+    rope_range = NULL,
+    ...
+) {
+  result <- purrr::map(
+    .x = object,
+    summary,
+    point_interval_args = point_interval_args,
+    rope_range = rope_range,
+    ...
+  ) %>%
+    purrr::list_rbind(
+      names_to = "analysis"
+    ) %>%
+    tidyr::separate_wider_delim(
+      cols = tidyr::all_of("analysis"),
+      delim = " ~ ",
+      names = c("parameter", "covariate")
+    )
 
+  class(result) <- c("summary.plausible_cor_list", class(result))
+  attr(result, "n_analyses") <- length(object)
+  attr(result, "method") <- attr(object[[1]], "method", exact = TRUE)
+  attr(result, "alternative") <- attr(object[[1]], "alternative", exact = TRUE)
+  attr(result, "confounders") <- attr(object[[1]], "confounders", exact = TRUE)
+  attr(result, "rope_range") <- rope_range
+  return(result)
+}
+
+#' Print method for summary.plausible_cor_list objects
+#'
+#' @param x An object of class "summary.plausible_cor_list".
+#' @param ... Additional arguments passed to tibble's print method.
+#'
+#' @export
+#' @method print summary.plausible_cor_list
+print.summary.plausible_cor_list <- function(x, ...) {
+  cat("<summary.plausible_cor_list object>\n")
+  cat(
+    " Number of plausible correlation analyses: ",
+    attr(x, "n_analyses", exact = TRUE), "\n", sep = ""
+  )
+  cat(" Shared settings:", "\n", sep = "")
+  purrr::walk(
+    .x = c(
+      "method", "alternative", "confounders", "rope_range"
+    ),
+    .f = function(name) {
+      print_plausible_cor_attr(x = x, name = name, n_space = 2L)
+    }
+  )
+  cat("\nSummary of plausible correlation estimates:\n")
+  NextMethod("print", x, ...)
+  return(invisible(x))
 }
 
 
@@ -48,55 +128,28 @@ print.plausible_cor_list <- function(x, ...) {
 #' @export
 #' @method print plausible_cor
 print.plausible_cor <- function(x, ...) {
-  # Check posterior_updf validity (cheap probe)
-  if ("posterior_updf" %in% names(x)) {
-    n_valid <- sum(
-      purrr::map_lgl(
-        .x = x[["posterior_updf"]],
-        .f = function(updf) {
-          out <- tryCatch(
-            updf(0),
-            error = function(e) {NA_real_}
-          )
-          result <- is.finite(out) && !is.na(out)
-          return(result)
-        }
-      )
-    )
-  } else {
-    n_valid <- nrow(x)
-  }
-
   cat("<plausible_cor object>\n")
-  cat(" Parameter: ", attr(x, "parameter", exact = TRUE), "\n", sep = "")
-  cat(" Covariate: ", attr(x, "covariate", exact = TRUE), "\n", sep = "")
-  if (!is.null(attr(x, "confounders", exact = TRUE))) {
-    cat(
-      " Confounders: ",
-      paste(attr(x, "confounders", exact = TRUE), collapse = ", "),
-      "\n", sep = ""
-    )
-  }
-  cat(" Method: ", attr(x, "method", exact = TRUE), "\n", sep = "")
-  cat(" Alternative hypothesis: ", attr(x, "alternative", exact = TRUE), "\n", sep = "")
+  purrr::walk(
+    .x = c(
+      "parameter", "covariate", "confounders", "method", "alternative"
+    ),
+    .f = function(name) {print_plausible_cor_attr(x = x, name = name)}
+  )
   cat(" Number of MCMC samples: ", dplyr::n_distinct(x[[".draw"]]), "\n", sep = "")
-  cat(" Number of valid posterior density functions: ", n_valid, "\n", sep = "")
+  cat(" Number of valid posterior density functions: ", n_valid_updf(x), "\n", sep = "")
 
-  if ("r" %in% names(x)) {
-    r_preview <- utils::head(x[["r"]], n = 5)
-    cat(
-      " Example r values: ",
-      paste0(round(r_preview, digits = 3), collapse = ", ")
-    )
-    if (nrow(x) > 5) {
-      cat(", ...")
-    }
-    cat("\n\n")
+  r_preview <- utils::head(x[["r"]], n = 5)
+  cat(
+    " Example r values: ",
+    paste0(round(r_preview, digits = 3), collapse = ", ")
+  )
+  if (nrow(x) > 5) {
+    cat(", ...")
   }
+  cat("\n\n")
 
-  # delegate further input arguments to tibble's print method
   NextMethod("print", x, ...)
-  invisible(x)
+  return(invisible(x))
 }
 
 
@@ -143,28 +196,15 @@ summary.plausible_cor <- function(
 #' @method print summary.plausible_cor
 print.summary.plausible_cor <- function(x, ...) {
   cat("<summary.plausible_cor object>\n")
-  cat(" Parameter: ", attr(x, "parameter", exact = TRUE), "\n", sep = "")
-  cat(" Covariate: ", attr(x, "covariate", exact = TRUE), "\n", sep = "")
-  if (!is.null(attr(x, "confounders", exact = TRUE))) {
-    cat(
-      " Confounders: ",
-      paste(attr(x, "confounders", exact = TRUE), collapse = ", "),
-      "\n", sep = ""
-    )
-  }
-  cat(" Method: ", attr(x, "method", exact = TRUE), "\n", sep = "")
-  cat(" Alternative hypothesis: ", attr(x, "alternative", exact = TRUE), "\n", sep = "")
-  if (!is.null(attr(x, "rope_range", exact = TRUE))) {
-    cat(
-      " ROPE: [",
-      paste0(attr(x, "rope_range", exact = TRUE), collapse = ", "),
-      "]\n", sep = ""
-    )
-  }
+  purrr::walk(
+    .x = c(
+      "parameter", "covariate", "confounders", "method", "alternative", "rope_range"
+    ),
+    .f = function(name) {print_plausible_cor_attr(x = x, name = name)}
+  )
   cat("\nSummary of plausible correlation estimates:\n")
-  # delegate to tibble's print method
   NextMethod("print", x, ...)
-  invisible(x)
+  return(invisible(x))
 }
 
 
@@ -202,5 +242,69 @@ plot.plausible_cor <- function(
       )
     }
   )
+  return(result)
+}
+
+
+#' @noRd
+print_plausible_cor_attr <- function(x, name, n_space = 1L) {
+  if (name == "confounders") {
+    return(print_confounders(x))
+  }
+  attribute <- attr(x, name, exact = TRUE)
+  if (is.null(attribute)) {
+    return(invisible(x = NULL))
+  }
+  name_label <- dplyr::case_when(
+    name == "parameter" ~ "Parameter",
+    name == "covariate" ~ "Covariate",
+    name == "method" ~ "Correlation method",
+    name == "alternative" ~ "Alternative hypothesis",
+    name == "rope_range" ~ "ROPE bounds",
+    TRUE ~ name
+  )
+  if (name == "rope_range") {
+    attribute <- paste0(attribute, collapse = ", ")
+  }
+  cat(
+    paste0(rep(" ", times = n_space), collapse = ""),
+    name_label, ": ", attribute, "\n",
+    sep = ""
+  )
+  return(invisible(x = NULL))
+}
+
+#' @noRd
+print_confounders <- function(x) {
+  confounders <- attr(x, "confounders", exact = TRUE)
+  if (!is.null(confounders)) {
+    if (length(confounders) > 5L) {
+      confounders_print <- paste0(
+        paste(confounders[1:4], collapse = ", "),
+        ", ..., ",
+        confounders[length(confounders)]
+      )
+    } else {
+      confounders_print <- paste(confounders, collapse = ", ")
+    }
+    cat(" Confounders: ", confounders_print, "\n", sep = "")
+  }
+  return(invisible(x = NULL))
+}
+
+#' @noRd
+n_valid_updf <- function(x) {
+  is_valid <- x[["posterior_updf"]] %>%
+    purrr::map_lgl(
+      .f = function(updf) {
+        out <- tryCatch(
+          updf(0),
+          error = function(e) {NA_real_}
+        )
+        result <- is.finite(out) && !is.na(out)
+        return(result)
+      }
+    )
+  result <- sum(is_valid)
   return(result)
 }

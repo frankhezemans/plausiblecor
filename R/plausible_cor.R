@@ -220,7 +220,7 @@
 #'     covariate_data = Forstmann_fMRI
 #'   )
 #'   print(multi_cor)
-#'   summary(multi_cor[[1]])
+#'   summary(multi_cor)
 #' }
 #'
 #' @export
@@ -576,6 +576,7 @@ summarise_plausible_cor <- function(
 
   point_interval_args <- validate_point_interval_args(point_interval_args)
   alternative <- attr(.data, "alternative", exact = TRUE)
+  rope_range <- validate_rope_range(x = rope_range, alternative = alternative)
 
   sample_summary <- .data %>%
     dplyr::select(dplyr::all_of("r")) %>%
@@ -621,7 +622,7 @@ summarise_plausible_cor <- function(
   )
 
   population_p_rope <- NULL
-  if (test_rope_range(rope_range)) {
+  if (!is.null(rope_range)) {
     population_interval_nested <- tidyr::nest(
       .data = population_interval,
       .by = "width",
@@ -911,8 +912,8 @@ compare_plausible_cors <- function(
   }
 
   if (
-    (attr(x, "alternative") != attr(y, "alternative")) ||
-    (attr(x, "method") != attr(y, "method"))
+    (attr(x, "alternative", exact = TRUE) != attr(y, "alternative", exact = TRUE)) ||
+    (attr(x, "method", exact = TRUE) != attr(y, "method", exact = TRUE))
   ) {
     rlang::abort(
       message = paste0(
@@ -921,6 +922,8 @@ compare_plausible_cors <- function(
       )
     )
   }
+
+  rope_range <- validate_rope_range(rope_range)
 
   if (!test_rng_seed(rng_seed)) {
     rng_seed <- c(NA, NA)
@@ -1162,6 +1165,7 @@ summarise_samples <- function(
   point_method <- rlang::arg_match(arg = point_method)
   interval_method <- rlang::arg_match(arg = interval_method)
   alternative <- rlang::arg_match(arg = alternative)
+  rope_range <- validate_rope_range(x = rope_range, alternative = alternative)
 
   data <- .data %>%
     dplyr::select(dplyr::where(is.numeric))
@@ -1214,7 +1218,7 @@ summarise_samples <- function(
     )
 
   p_rope <- NULL
-  if (test_rope_range(rope_range)) {
+  if (!is.null(rope_range)) {
     interval_nested <- tidyr::nest(
       .data = result,
       ci_range = tidyr::all_of(c("lower", "upper")),
