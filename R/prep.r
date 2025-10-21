@@ -34,7 +34,7 @@ prep_plausible_cor_data <- function(
   )
 
   join_by <- column_names[["subject_id"]]
-  if (".draw" %in% names(covariate_data)) {
+  if (".draw" %in% names(covariate_only_data)) {
     join_by <- c(".draw", join_by)
   }
   result <- dplyr::left_join(
@@ -61,6 +61,14 @@ prep_plausible_cor_data <- function(
       by = join_by
     )
   }
+
+  result <- result %>%
+    dplyr::mutate(
+      dplyr::across(
+        .cols = dplyr::all_of(column_names[["subject_id"]]),
+        .fns = factor
+      )
+    )
 
   n_pre <- nrow(result)
   result <- result %>%
