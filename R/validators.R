@@ -377,31 +377,37 @@ validate_posterior_cor_updf_input <- function(r, n, kappa, n_bins, max_iter) {
 #' @noRd
 validate_geom_args <- function(
     aes_list,
+    defaults,
     allowed_names = character(),
     disallowed_names = character(),
     arg_name = deparse(substitute(aes_list))
 ) {
+  if (isFALSE(aes_list)) {
+    return(FALSE)
+  }
+  if (is.null(aes_list)) {
+    return(defaults)
+  }
   if (!is.list(aes_list)) {
     rlang::abort(
       message = sprintf("`%s` must be a list or FALSE.", arg_name)
     )
   }
-  if (isFALSE(aes_list) || is.null(aes_list)) {
-    return(invisible(x = NULL))
-  }
 
   actual_names <- names(aes_list)
-  disallowed_found <- intersect(actual_names, disallowed_names)
-  if (length(disallowed_found) > 0) {
-    rlang::abort(
-      message = sprintf(
-        "In `%s`, the following names are not allowed: %s",
-        arg_name, paste(disallowed_found, collapse = ", ")
+  if (length(disallowed_names) > 0) {
+    disallowed_found <- intersect(actual_names, disallowed_names)
+    if (length(disallowed_found) > 0) {
+      rlang::abort(
+        message = sprintf(
+          "In `%s`, the following names are not allowed: %s",
+          arg_name, paste(disallowed_found, collapse = ", ")
+        )
       )
-    )
+    }
   }
 
-  if (length(allowed_names) >= 1) {
+  if (length(allowed_names) > 0) {
     unknown_names <- setdiff(actual_names, allowed_names)
     if (length(unknown_names) > 0) {
       rlang::abort(
@@ -415,5 +421,8 @@ validate_geom_args <- function(
     }
   }
 
-  return(invisible(x = NULL))
+  result <- defaults
+  result[names(aes_list)] <- aes_list
+
+  return(result)
 }

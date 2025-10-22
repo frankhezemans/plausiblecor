@@ -28,14 +28,14 @@ Default is \code{Inf} (use all draws).}
 \code{\link[ggdist:stat_dotsinterval]{ggdist::stat_dotsinterval()}} or \code{"hist"} for a histogram using
 \code{\link[ggdist:stat_histinterval]{ggdist::stat_histinterval()}}.}
 
-\item{plot_aes}{A named list of aesthetics, passed to the underlying plotting
+\item{plot_aes}{A named list of aesthetic(s), passed to the underlying plotting
 function. Defaults to
 \code{list(binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress", colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))}
 if \code{style == "dots"}, or to
 \code{list(breaks = ggdist::waiver(), colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))}
 if \code{style == "hist"}.}
 
-\item{zero_refline_aes}{A named list of aesthetics for the vertical reference
+\item{zero_refline_aes}{A named list of aesthetic(s) for the vertical reference
 line at zero (e.g., \code{linetype}, \code{linewidth}, \code{colour}), passed to
 \code{\link[ggplot2:geom_abline]{ggplot2::geom_vline()}}. Defaults to
 \code{list(linetype = "dashed", linewidth = 0.75)}. Set to \code{FALSE} to omit
@@ -98,6 +98,14 @@ plot_sample_cor(caution_striatum_cor)
   library(magrittr)
   caution_striatum_cor \%>\%
     plot_sample_cor()
+}
+# returns a ggplot2 object, which can be flexibly adjusted post-hoc using
+# ggplot2 functions
+\dontrun{
+  library(ggplot2)
+  plot(caution_striatum_cor, type = "sample") +
+    labs(title = "response caution effect ~ BOLD signal change in striatum") +
+    theme(axis.title.x = element_text(colour = "red"))
 }
 
 # Non-default plot settings ------------------------------------------------

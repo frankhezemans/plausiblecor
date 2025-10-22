@@ -9,12 +9,12 @@
 #'        least `.draw`, `r`, and `posterior_updf` columns.
 #' @param n_draws Integer specifying the maximum number of MCMC draws to plot.
 #'        Defaults to `500` to avoid overplotting of density traces.
-#' @param trace_aes A named list of aesthetics for the individual posterior
+#' @param trace_aes A named list of aesthetic(s) for the individual posterior
 #'        density traces (e.g., `colour`, `alpha`, `linewidth`), passed to
 #'        [ggplot2::geom_line()]. Defaults to
 #'        `list(colour = "#4C4C4C", alpha = 0.1, linewidth = 0.1)`. Set to
 #'        `FALSE` to omit these lines entirely.
-#' @param mean_aes A named list of aesthetics for the mean posterior density
+#' @param mean_aes A named list of aesthetic(s) for the mean posterior density
 #'        trace (e.g., `colour`, `alpha`, `linewidth`), passed to
 #'        [ggplot2::geom_line()]. Defaults to
 #'        `list(colour = "#377EB8", linewidth = 1.5)`. Set to
@@ -24,17 +24,17 @@
 #'        which is a single numeric value of the desired interval width, and `method`,
 #'        which is a character specifying which interval type to compute.
 #'        Defaults to `list(width = 0.95, method = "hdci")`.
-#' @param mean_interval_aes A named list of aesthetics for a light shaded
+#' @param mean_interval_aes A named list of aesthetic(s) for a light shaded
 #'        background rectangle that represents the requested interval of the
 #'        mean posterior density trace. Arguments are passed to [ggplot2::annotate()].
 #'        Defaults to `list(fill = "#BDD7E7", alpha = 0.4)`.
 #'        Set to `FALSE` to omit the interval entirely.
-#' @param sample_rug_aes A named list of aesthetics for "rug" plot of the sample
+#' @param sample_rug_aes A named list of aesthetic(s) for "rug" plot of the sample
 #'        correlation coefficients on which the individual posterior density
 #'        traces are based. Arguments are passed to [ggplot2::geom_rug()].
 #'        Defaults to `list(alpha = 0.1, linewidth = 0.1, length = grid::unit(0.03, "npc"))`.
 #'        Set to `FALSE` to omit the rug plot entirely.
-#' @param zero_refline_aes A named list of aesthetics for the vertical reference
+#' @param zero_refline_aes A named list of aesthetic(s) for the vertical reference
 #'        line at zero (e.g., `linetype`, `linewidth`, `colour`), passed to
 #'        [ggplot2::geom_vline()]. Defaults to
 #'        `list(linetype = "dashed", linewidth = 0.75)`. Set to `FALSE` to omit
@@ -91,6 +91,14 @@
 #'   library(magrittr)
 #'   caution_striatum_cor %>%
 #'     plot_population_cor()
+#' }
+#' # returns a ggplot2 object, which can be flexibly adjusted post-hoc using
+#' # ggplot2 functions
+#' \dontrun{
+#'   library(ggplot2)
+#'   plot(caution_striatum_cor) +
+#'     labs(title = "response caution effect ~ BOLD signal change in striatum") +
+#'     theme(axis.title.x = element_text(colour = "red"))
 #' }
 #'
 #' # Non-default plot settings ------------------------------------------------
@@ -171,12 +179,22 @@ plot_population_cor <- function(
     )
   )
 
+  mean_interval_aes <- validate_geom_args(
+    aes_list = mean_interval_aes,
+    defaults = list(
+      fill = "#BDD7E7", alpha = 0.4
+    ),
+    disallowed_names = c(
+      "geom", "x", "y", "xmin", "xmax", "ymin", "ymax", "xend", "yend"
+    ),
+    arg_name = "mean_interval_aes"
+  )
   if (!isFALSE(mean_interval_aes)) {
-    mean_interval_args <- mean_interval_args %||% list(
-      width = 0.95, method = "hdci"
-    )
-    validate_geom_args(
+    mean_interval_args <- validate_geom_args(
       aes_list = mean_interval_args,
+      defaults = list(
+        width = 0.95, method = "hdci"
+      ),
       allowed_names = c("width", "method"),
       arg_name = "mean_interval_args"
     )
@@ -186,18 +204,6 @@ plot_population_cor <- function(
       width = mean_interval_args[["width"]],
       method = mean_interval_args[["method"]]
     )
-
-    mean_interval_aes <- mean_interval_aes %||% list(
-      fill = "#BDD7E7", alpha = 0.4
-    )
-    validate_geom_args(
-      aes_list = mean_interval_aes,
-      disallowed_names = c(
-        "geom", "x", "y", "xmin", "xmax", "ymin", "ymax", "xend", "yend"
-      ),
-      arg_name = "mean_interval_aes"
-    )
-
     result <- result +
       rlang::exec(
         .fn = ggplot2::annotate,
@@ -210,15 +216,15 @@ plot_population_cor <- function(
       )
   }
 
-  if (!isFALSE(zero_refline_aes)) {
-    zero_refline_aes <- zero_refline_aes %||% list(
+  zero_refline_aes <- validate_geom_args(
+    aes_list = zero_refline_aes,
+    defaults = list(
       linetype = "dashed", linewidth = 0.75
-    )
-    validate_geom_args(
-      aes_list = zero_refline_aes,
-      disallowed_names = "xintercept",
-      arg_name = "zero_refline_aes"
-    )
+    ),
+    disallowed_names = "xintercept",
+    arg_name = "zero_refline_aes"
+  )
+  if (!isFALSE(zero_refline_aes)) {
     result <- result +
       rlang::exec(
         .fn = ggplot2::geom_vline,
@@ -227,17 +233,17 @@ plot_population_cor <- function(
       )
   }
 
-  if (!isFALSE(sample_rug_aes)) {
-    sample_rug_aes <- sample_rug_aes %||% list(
+  sample_rug_aes <- validate_geom_args(
+    aes_list = sample_rug_aes,
+    defaults = list(
       alpha = 0.1, linewidth = 0.1, length = grid::unit(0.03, "npc")
-    )
-    validate_geom_args(
-      aes_list = sample_rug_aes,
-      disallowed_names = c(
-        "mapping", "data", "stat", "position", "outside", "sides"
-      ),
-      arg_name = "sample_rug_aes"
-    )
+    ),
+    disallowed_names = c(
+      "mapping", "data", "stat", "position", "outside", "sides"
+    ),
+    arg_name = "sample_rug_aes"
+  )
+  if (!isFALSE(sample_rug_aes)) {
     result <- result +
       rlang::exec(
         .fn = ggplot2::geom_rug,
@@ -250,15 +256,15 @@ plot_population_cor <- function(
       )
   }
 
-  if (!isFALSE(trace_aes)) {
-    trace_aes <- trace_aes %||% list(
+  trace_aes <- validate_geom_args(
+    aes_list = trace_aes,
+    defaults = list(
       colour = "#4C4C4C", alpha = 0.1, linewidth = 0.1
-    )
-    validate_geom_args(
-      aes_list = trace_aes,
-      disallowed_names = c("mapping", "data", "stat", "position"),
-      arg_name = "trace_aes"
-    )
+    ),
+    disallowed_names = c("mapping", "data", "stat", "position"),
+    arg_name = "trace_aes"
+  )
+  if (!isFALSE(trace_aes)) {
     result <- result +
       rlang::exec(
         .fn = ggplot2::geom_line,
@@ -270,15 +276,15 @@ plot_population_cor <- function(
       )
   }
 
-  if (!isFALSE(mean_aes)) {
-    mean_aes <- mean_aes %||% list(
+  mean_aes <- validate_geom_args(
+    aes_list = mean_aes,
+    defaults = list(
       colour = "#377EB8", linewidth = 1.5
-    )
-    validate_geom_args(
-      aes_list = mean_aes,
-      disallowed_names = c("mapping", "data", "stat", "position"),
-      arg_name = "mean_aes"
-    )
+    ),
+    disallowed_names = c("mapping", "data", "stat", "position"),
+    arg_name = "mean_aes"
+  )
+  if (!isFALSE(mean_aes)) {
     result <- result +
       rlang::exec(
         .fn = ggplot2::geom_line,
@@ -321,13 +327,13 @@ plot_population_cor <- function(
 #' @param style Character, either `"dots"` (default) for a dotplot using
 #'        [ggdist::stat_dotsinterval()] or `"hist"` for a histogram using
 #'        [ggdist::stat_histinterval()].
-#' @param plot_aes A named list of aesthetics, passed to the underlying plotting
+#' @param plot_aes A named list of aesthetic(s), passed to the underlying plotting
 #'        function. Defaults to
 #'        `list(binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress", colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))`
 #'        if `style == "dots"`, or to
 #'        `list(breaks = ggdist::waiver(), colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75, point_alpha = 1, point_size = 3, interval_alpha = 1, interval_size_range = c(1.25, 2.5))`
 #'        if `style == "hist"`.
-#' @param zero_refline_aes A named list of aesthetics for the vertical reference
+#' @param zero_refline_aes A named list of aesthetic(s) for the vertical reference
 #'        line at zero (e.g., `linetype`, `linewidth`, `colour`), passed to
 #'        [ggplot2::geom_vline()]. Defaults to
 #'        `list(linetype = "dashed", linewidth = 0.75)`. Set to `FALSE` to omit
@@ -379,6 +385,14 @@ plot_population_cor <- function(
 #'   library(magrittr)
 #'   caution_striatum_cor %>%
 #'     plot_sample_cor()
+#' }
+#' # returns a ggplot2 object, which can be flexibly adjusted post-hoc using
+#' # ggplot2 functions
+#' \dontrun{
+#'   library(ggplot2)
+#'   plot(caution_striatum_cor, type = "sample") +
+#'     labs(title = "response caution effect ~ BOLD signal change in striatum") +
+#'     theme(axis.title.x = element_text(colour = "red"))
 #' }
 #'
 #' # Non-default plot settings ------------------------------------------------
@@ -435,15 +449,15 @@ plot_sample_cor <- function(
     )
   )
 
-  if (!isFALSE(zero_refline_aes)) {
-    zero_refline_aes <- zero_refline_aes %||% list(
+  zero_refline_aes <- validate_geom_args(
+    aes_list = zero_refline_aes,
+    defaults = list(
       linetype = "dashed", linewidth = 0.75, colour = "black"
-    )
-    validate_geom_args(
-      aes_list = zero_refline_aes,
-      disallowed_names = "xintercept",
-      arg_name = "zero_refline_aes"
-    )
+    ),
+    disallowed_names = "xintercept",
+    arg_name = "zero_refline_aes"
+  )
+  if (!isFALSE(zero_refline_aes)) {
     result <- result +
       rlang::exec(
         .fn = ggplot2::geom_vline,
@@ -459,14 +473,14 @@ plot_sample_cor <- function(
   point_interval_args <- validate_point_interval_args(point_interval_args)
 
   if (style == "dots") {
-    plot_aes <- plot_aes %||% list(
-      binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress",
-      colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75,
-      point_alpha = 1, point_size = 3,
-      interval_alpha = 1, interval_size_range = c(1.25, 2.5)
-    )
-    validate_geom_args(
+    plot_aes <- validate_geom_args(
       aes_list = plot_aes,
+      defaults = list(
+        binwidth = grid::unit(c(1, Inf), "mm"), overflow = "compress",
+        colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75,
+        point_alpha = 1, point_size = 3,
+        interval_alpha = 1, interval_size_range = c(1.25, 2.5)
+      ),
       disallowed_names = c(
         "mapping", "data", "geom", "position", "point_interval", ".width"
       ),
@@ -483,14 +497,14 @@ plot_sample_cor <- function(
         !!!plot_aes
       )
   } else {
-    plot_aes <- plot_aes %||% list(
-      breaks = ggdist::waiver(),
-      colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75,
-      point_alpha = 1, point_size = 3,
-      interval_alpha = 1, interval_size_range = c(1.25, 2.5)
-    )
-    validate_geom_args(
+    plot_aes <- validate_geom_args(
       aes_list = plot_aes,
+      defaults = list(
+        breaks = ggdist::waiver(),
+        colour = "#377EB8", fill = "#7F7F7F", alpha = 0.75,
+        point_alpha = 1, point_size = 3,
+        interval_alpha = 1, interval_size_range = c(1.25, 2.5)
+      ),
       disallowed_names = c(
         "mapping", "data", "geom", "position", "point_interval", ".width"
       ),

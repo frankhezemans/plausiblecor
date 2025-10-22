@@ -26,13 +26,13 @@ least \code{.draw}, \code{r}, and \code{posterior_updf} columns.}
 \item{n_draws}{Integer specifying the maximum number of MCMC draws to plot.
 Defaults to \code{500} to avoid overplotting of density traces.}
 
-\item{trace_aes}{A named list of aesthetics for the individual posterior
+\item{trace_aes}{A named list of aesthetic(s) for the individual posterior
 density traces (e.g., \code{colour}, \code{alpha}, \code{linewidth}), passed to
 \code{\link[ggplot2:geom_path]{ggplot2::geom_line()}}. Defaults to
 \code{list(colour = "#4C4C4C", alpha = 0.1, linewidth = 0.1)}. Set to
 \code{FALSE} to omit these lines entirely.}
 
-\item{mean_aes}{A named list of aesthetics for the mean posterior density
+\item{mean_aes}{A named list of aesthetic(s) for the mean posterior density
 trace (e.g., \code{colour}, \code{alpha}, \code{linewidth}), passed to
 \code{\link[ggplot2:geom_path]{ggplot2::geom_line()}}. Defaults to
 \code{list(colour = "#377EB8", linewidth = 1.5)}. Set to
@@ -44,19 +44,19 @@ which is a single numeric value of the desired interval width, and \code{method}
 which is a character specifying which interval type to compute.
 Defaults to \code{list(width = 0.95, method = "hdci")}.}
 
-\item{mean_interval_aes}{A named list of aesthetics for a light shaded
+\item{mean_interval_aes}{A named list of aesthetic(s) for a light shaded
 background rectangle that represents the requested interval of the
 mean posterior density trace. Arguments are passed to \code{\link[ggplot2:annotate]{ggplot2::annotate()}}.
 Defaults to \code{list(fill = "#BDD7E7", alpha = 0.4)}.
 Set to \code{FALSE} to omit the interval entirely.}
 
-\item{sample_rug_aes}{A named list of aesthetics for "rug" plot of the sample
+\item{sample_rug_aes}{A named list of aesthetic(s) for "rug" plot of the sample
 correlation coefficients on which the individual posterior density
 traces are based. Arguments are passed to \code{\link[ggplot2:geom_rug]{ggplot2::geom_rug()}}.
 Defaults to \code{list(alpha = 0.1, linewidth = 0.1, length = grid::unit(0.03, "npc"))}.
 Set to \code{FALSE} to omit the rug plot entirely.}
 
-\item{zero_refline_aes}{A named list of aesthetics for the vertical reference
+\item{zero_refline_aes}{A named list of aesthetic(s) for the vertical reference
 line at zero (e.g., \code{linetype}, \code{linewidth}, \code{colour}), passed to
 \code{\link[ggplot2:geom_abline]{ggplot2::geom_vline()}}. Defaults to
 \code{list(linetype = "dashed", linewidth = 0.75)}. Set to \code{FALSE} to omit
@@ -122,6 +122,14 @@ plot_population_cor(caution_striatum_cor)
   library(magrittr)
   caution_striatum_cor \%>\%
     plot_population_cor()
+}
+# returns a ggplot2 object, which can be flexibly adjusted post-hoc using
+# ggplot2 functions
+\dontrun{
+  library(ggplot2)
+  plot(caution_striatum_cor) +
+    labs(title = "response caution effect ~ BOLD signal change in striatum") +
+    theme(axis.title.x = element_text(colour = "red"))
 }
 
 # Non-default plot settings ------------------------------------------------
