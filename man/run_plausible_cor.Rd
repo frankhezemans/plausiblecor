@@ -115,7 +115,13 @@ posterior density at any correlation value between -1 and 1}
 If multiple parameter–covariate pairs are supplied (i.e., \code{parameter} and
 \code{covariate} are vectors of equal length greater than 1), returns an object of
 class \code{"plausible_cor_list"}, which is a list of \code{"plausible_cor"} objects
-corresponding to each parameter–covariate set.
+corresponding to each parameter–covariate set. Each element of a
+\code{"plausible_cor_list"} is fully self-contained and can be accessed via
+standard list indexing (e.g., \code{result[[1]]}).
+
+Both \code{"plausible_cor"} and \code{"plausible_cor_list"} objects have dedicated
+S3 methods for further analysis and interpretation using \code{\link[=summary]{summary()}} and
+\code{\link[=plot]{plot()}}.
 }
 \description{
 Implements a Bayesian approach for exploring individual differences in one or
@@ -160,10 +166,12 @@ coefficient \code{r} should be a finite value in the domain \eqn{\left[-1, 1\rig
 and the number of complete observations \code{n} should be at least 3. Any MCMC
 sample whose values of \code{r} and \code{n} do not meet these requirements is removed.
 
-Each element of a \code{"plausible_cor_list"} is fully self-contained and can be
-accessed via standard list indexing (e.g., \code{result[[1]]}). A single
-\code{"plausible_cor"} object can be analysed and interpreted using \code{\link[=summary]{summary()}}
-and \code{\link[=plot]{plot()}} methods.
+Parallel computation across parameter-covariate pairs is supported when
+multiple pairs are supplied. Parallelisation is handled via the \code{\link[furrr:furrr-package]{furrr::furrr}}
+package, which is an optional dependency. To enable parallel computation,
+ensure that the \code{furrr} package is installed, and that a parallel plan via
+\code{\link[future:plan]{future::plan()}} (e.g., \link[future:multisession]{future::multisession}) is set prior to calling
+\code{\link[=run_plausible_cor]{run_plausible_cor()}}.
 }
 \examples{
 # Typical usage: plausible correlation analysis ----------------------------

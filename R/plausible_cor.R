@@ -98,7 +98,13 @@
 #' If multiple parameter–covariate pairs are supplied (i.e., `parameter` and
 #' `covariate` are vectors of equal length greater than 1), returns an object of
 #' class `"plausible_cor_list"`, which is a list of `"plausible_cor"` objects
-#' corresponding to each parameter–covariate set.
+#' corresponding to each parameter–covariate set. Each element of a
+#' `"plausible_cor_list"` is fully self-contained and can be accessed via
+#' standard list indexing (e.g., `result[[1]]`).
+#'
+#' Both `"plausible_cor"` and `"plausible_cor_list"` objects have dedicated
+#' S3 methods for further analysis and interpretation using [summary()] and
+#' [plot()].
 #'
 #' @details
 #' This function implements the approach described by Ly et al. (2017) for
@@ -127,10 +133,12 @@
 #' and the number of complete observations `n` should be at least 3. Any MCMC
 #' sample whose values of `r` and `n` do not meet these requirements is removed.
 #'
-#' Each element of a `"plausible_cor_list"` is fully self-contained and can be
-#' accessed via standard list indexing (e.g., `result[[1]]`). A single
-#' `"plausible_cor"` object can be analysed and interpreted using [summary()]
-#' and [plot()] methods.
+#' Parallel computation across parameter-covariate pairs is supported when
+#' multiple pairs are supplied. Parallelisation is handled via the [`furrr`]
+#' package, which is an optional dependency. To enable parallel computation,
+#' ensure that the `furrr` package is installed, and that a parallel plan via
+#' [future::plan()] (e.g., [future::multisession]) is set prior to calling
+#' [run_plausible_cor()].
 #'
 #' @seealso [summarise_plausible_cor()], [plot_sample_cor()],
 #'    [plot_population_cor()], [compare_plausible_cors()]
@@ -261,9 +269,9 @@ run_plausible_cor <- function(
     confounders = confounders
   )
 
-  result <- purrr::map(
-    .x = column_names,
-    .f = function(names_set) {
+  result <- auto_future_map(
+    x = column_names,
+    f = function(names_set) {
       return(
         run_plausible_cor_single(
           column_names = names_set,
@@ -274,7 +282,10 @@ run_plausible_cor <- function(
           posterior_args = posterior_args
         )
       )
-    }
+    },
+    options = furrr::furrr_options(
+      seed = rng_seed
+    )
   )
 
   if (length(result) == 1L) {
@@ -438,6 +449,26 @@ compute_cor <- function(
   )
   return(result)
 
+}
+
+
+#' @noRd
+auto_future_map <- function(x, f, options = NULL) {
+  has_future <- rlang::is_installed(c("future", "furrr")) &&
+    !inherits(future::plan(), "sequential")
+  if (has_future) {
+    out <- furrr::future_map(
+      .x = x,
+      .f = f,
+      .options = options
+    )
+  } else {
+    out <- purrr::map(
+      .x = x,
+      .f = f
+    )
+  }
+  return(out)
 }
 
 

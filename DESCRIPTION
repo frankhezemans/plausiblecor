@@ -60,6 +60,8 @@ Depends:
 Roxygen: list(markdown = TRUE)
 Suggests: 
     EMC2,
+    furrr,
+    future,
     testthat (>= 3.0.0),
     vdiffr (>= 1.0.0)
 Config/testthat/edition: 3
