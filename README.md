@@ -79,16 +79,16 @@ summary(caution_striatum_cor, rope_range = c(-0.1, 0.1))
 #> <summary.plausible_cor object>
 #>  Parameter: caution_effect_speed
 #>  Covariate: striatum
-#>  Method: pearson
+#>  Correlation method: pearson
 #>  Alternative hypothesis: two.sided
-#>  ROPE: [-0.1, 0.1]
+#>  ROPE bounds: -0.1, 0.1
 #> 
 #> Summary of plausible correlation estimates:
 #> # A tibble: 2 × 6
 #>   type         mean  lower  upper p_dir p_rope
 #>   <fct>       <dbl>  <dbl>  <dbl> <dbl>  <dbl>
-#> 1 sample     -0.326 -0.510 -0.136 0.999 0.0107
-#> 2 population -0.277 -0.683  0.155 0.887 0.157
+#> 1 sample     -0.326 -0.510 -0.136 0.999  0    
+#> 2 population -0.277 -0.683  0.155 0.887  0.164
 
 # illustrate the posterior distribution at the population level
 plot(caution_striatum_cor)
@@ -98,11 +98,15 @@ plot(caution_striatum_cor)
 
 ## Development status
 
-This package is under **active development**. Some functions are
-experimental and may change drastically or be removed without notice. If
-you use this package, please be prepared to update your code as the
-package develops. Feedback is very welcome via [GitHub
-issues](https://github.com/frankhezemans/plausiblecor/issues).
+This package is under active development, but the core functionality is
+in place and relatively stable.
+
+If you encounter any bugs or have suggestions for improvements or
+extensions, please feel free to [open an
+issue](https://github.com/frankhezemans/plausiblecor/issues).
+Contributions via [pull
+requests](https://github.com/frankhezemans/plausiblecor/pulls) are also
+very welcome.
 
 ## References
 

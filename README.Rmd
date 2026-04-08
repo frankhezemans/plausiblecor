@@ -65,7 +65,9 @@ plot(caution_striatum_cor)
 
 ## Development status
 
-This package is under **active development**. Some functions are experimental and may change drastically or be removed without notice. If you use this package, please be prepared to update your code as the package develops. Feedback is very welcome via [GitHub issues](https://github.com/frankhezemans/plausiblecor/issues).
+This package is under active development, but the core functionality is in place and relatively stable.
+
+If you encounter any bugs or have suggestions for improvements or extensions, please feel free to [open an issue](https://github.com/frankhezemans/plausiblecor/issues). Contributions via [pull requests](https://github.com/frankhezemans/plausiblecor/pulls) are also very welcome.
 
 ## References
 
